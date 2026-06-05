@@ -44,8 +44,6 @@ MemorySystem PROC PUBLIC
     invoke GetStdHandle,STD_OUTPUT_HANDLE
     mov ebx,eax
 
-    ; DYNAMIC CALCULATION
-
     mov eax,kernelMem
     add eax,shellMem
     add eax,taskMem
@@ -59,80 +57,30 @@ MemorySystem PROC PUBLIC
 
     mov freeRAM,eax
 
-    ; TITLE
-
     invoke WriteConsoleA,ebx,ADDR memTitle,50,0,0
 
-    ; TOTAL
-
-    invoke wsprintfA,\
-        ADDR buffer,\
-        ADDR fmt1,\
-        totalRAM
-
+    invoke wsprintfA,ADDR buffer,ADDR fmt1,totalRAM
     invoke WriteConsoleA,ebx,ADDR buffer,200,0,0
 
-    ; USED
-
-    invoke wsprintfA,\
-        ADDR buffer,\
-        ADDR fmt2,\
-        usedRAM
-
+    invoke wsprintfA,ADDR buffer,ADDR fmt2,usedRAM
     invoke WriteConsoleA,ebx,ADDR buffer,200,0,0
 
-    ; FREE
-
-    invoke wsprintfA,\
-        ADDR buffer,\
-        ADDR fmt3,\
-        freeRAM
-
+    invoke wsprintfA,ADDR buffer,ADDR fmt3,freeRAM
     invoke WriteConsoleA,ebx,ADDR buffer,200,0,0
 
-    ; KERNEL
-
-    invoke wsprintfA,\
-        ADDR buffer,\
-        ADDR kernelFmt,\
-        kernelMem
-
+    invoke wsprintfA,ADDR buffer,ADDR kernelFmt,kernelMem
     invoke WriteConsoleA,ebx,ADDR buffer,200,0,0
 
-    ; SHELL
-
-    invoke wsprintfA,\
-        ADDR buffer,\
-        ADDR shellFmt,\
-        shellMem
-
+    invoke wsprintfA,ADDR buffer,ADDR shellFmt,shellMem
     invoke WriteConsoleA,ebx,ADDR buffer,200,0,0
 
-    ; TASK
-
-    invoke wsprintfA,\
-        ADDR buffer,\
-        ADDR taskFmt,\
-        taskMem
-
+    invoke wsprintfA,ADDR buffer,ADDR taskFmt,taskMem
     invoke WriteConsoleA,ebx,ADDR buffer,200,0,0
 
-    ; CALC
-
-    invoke wsprintfA,\
-        ADDR buffer,\
-        ADDR calcFmt,\
-        calcMem
-
+    invoke wsprintfA,ADDR buffer,ADDR calcFmt,calcMem
     invoke WriteConsoleA,ebx,ADDR buffer,200,0,0
 
-    ; TIME
-
-    invoke wsprintfA,\
-        ADDR buffer,\
-        ADDR timeFmt,\
-        timeMem
-
+    invoke wsprintfA,ADDR buffer,ADDR timeFmt,timeMem
     invoke WriteConsoleA,ebx,ADDR buffer,200,0,0
 
     ret

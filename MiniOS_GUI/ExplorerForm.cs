@@ -9,21 +9,20 @@ namespace MiniOS_GUI
     {
         private ListView fileList;
         private TextBox pathBar;
-        private Button btnBack, btnRefresh, btnNewFolder, btnDelete, btnRename, btnNewText, btnImageView;
+        private Button btnBack, btnRefresh, btnDelete, btnRename, btnNewText;
         private Label lblStatus;
         private Timer refreshTimer;
+
         private string currentPath = "";
         private string documentsPath, downloadsPath, privatePath;
         private bool isPrivateUnlocked = false;
         private string privatePassword = "admin123";
-
         public ExplorerForm()
         {
             InitializeFolders();
             BuildUI();
             LoadPath(currentPath);
             StartRefresh();
-            SystemLogForm.WriteLog("FILE", "admin", "File Explorer Opened", "User accessed files", "SUCCESS");
         }
 
         private void InitializeFolders()
@@ -32,48 +31,44 @@ namespace MiniOS_GUI
             downloadsPath = Path.Combine(Application.StartupPath, "MiniOS_Downloads");
             privatePath = Path.Combine(Application.StartupPath, "MiniOS_Private");
 
+            // Create folders directly - no blocking backend call at startup
             if (!Directory.Exists(documentsPath)) Directory.CreateDirectory(documentsPath);
             if (!Directory.Exists(downloadsPath)) Directory.CreateDirectory(downloadsPath);
             if (!Directory.Exists(privatePath)) Directory.CreateDirectory(privatePath);
-
-            string welcomeFile = Path.Combine(documentsPath, "Welcome.txt");
-            if (!File.Exists(welcomeFile))
-                File.WriteAllText(welcomeFile, "Welcome to MiniOS File System!\n\nYou can create, edit, and manage files here.");
 
             currentPath = documentsPath;
         }
 
         private void BuildUI()
         {
-            this.Text = "MiniOS File Explorer";
+            this.Text = "NOVA-OS File Explorer";
             this.Size = new Size(950, 600);
             this.BackColor = Color.FromArgb(16, 24, 32);
             this.StartPosition = FormStartPosition.CenterScreen;
 
-            // Top Toolbar
             Panel toolbar = new Panel();
             toolbar.Dock = DockStyle.Top;
-            toolbar.Height = 50;
+            toolbar.Height = 45;
             toolbar.BackColor = Color.FromArgb(24, 30, 38);
 
             Label titleLabel = new Label();
-            titleLabel.Text = "📁 MINIOS FILE SYSTEM";
+            titleLabel.Text = "📁 NOVA-OS FILE SYSTEM";
             titleLabel.ForeColor = Color.DeepSkyBlue;
-            titleLabel.Font = new Font("Segoe UI", 14, FontStyle.Bold);
-            titleLabel.Location = new Point(15, 12);
+            titleLabel.Font = new Font("Segoe UI", 12, FontStyle.Bold);
+            titleLabel.Location = new Point(10, 12);
             titleLabel.AutoSize = true;
 
             pathBar = new TextBox();
-            pathBar.Location = new Point(250, 12);
-            pathBar.Size = new Size(450, 30);
+            pathBar.Location = new Point(200, 10);
+            pathBar.Size = new Size(450, 25);
             pathBar.BackColor = Color.FromArgb(30, 36, 44);
             pathBar.ForeColor = Color.Lime;
             pathBar.Font = new Font("Consolas", 10);
             pathBar.ReadOnly = true;
 
-            btnBack = CreateToolButton("◀", 720, 10);
+            btnBack = CreateToolButton("◀", 660, 8);
             btnBack.Click += BtnBack_Click;
-            btnRefresh = CreateToolButton("🔄", 760, 10);
+            btnRefresh = CreateToolButton("🔄", 695, 8);
             btnRefresh.Click += BtnRefresh_Click;
 
             toolbar.Controls.Add(titleLabel);
@@ -81,43 +76,44 @@ namespace MiniOS_GUI
             toolbar.Controls.Add(btnBack);
             toolbar.Controls.Add(btnRefresh);
 
-            // Left Panel
             Panel leftPanel = new Panel();
             leftPanel.Dock = DockStyle.Left;
-            leftPanel.Width = 220;
+            leftPanel.Width = 200;
             leftPanel.BackColor = Color.FromArgb(20, 26, 34);
 
             Label quickLabel = new Label();
-            quickLabel.Text = "MINIOS STORAGE";
+            quickLabel.Text = "NOVA-OS STORAGE";
             quickLabel.ForeColor = Color.DeepSkyBlue;
-            quickLabel.Font = new Font("Segoe UI", 11, FontStyle.Bold);
-            quickLabel.Location = new Point(15, 15);
+            quickLabel.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+            quickLabel.Location = new Point(10, 15);
             quickLabel.AutoSize = true;
 
-            Button btnDocuments = CreateQuickButton("📄 Documents", 15, 50);
+            Button btnDocuments = CreateQuickButton("📄 Documents", 10, 45);
             btnDocuments.Click += (s, e) => LoadPath(documentsPath);
-            Button btnDownloads = CreateQuickButton("⬇ Downloads", 15, 95);
+
+            Button btnDownloads = CreateQuickButton("⬇ Downloads", 10, 85);
             btnDownloads.Click += (s, e) => LoadPath(downloadsPath);
-            Button btnPrivate = CreateQuickButton("🔒 Private Vault", 15, 140);
+
+            Button btnPrivate = CreateQuickButton("🔒 Private Vault", 10, 125);
             btnPrivate.Click += (s, e) => AccessPrivateFolder(btnPrivate);
-            Button btnNewFolderQuick = CreateQuickButton("📁 + New Folder", 15, 195);
-            btnNewFolderQuick.Click += BtnNewFolder_Click;
+
+            Button btnNewFolder = CreateQuickButton("📁 + New Folder", 10, 170);
+            btnNewFolder.Click += BtnNewFolder_Click;
 
             Label infoLabel = new Label();
-            infoLabel.Text = "\n💡 INFO:\n• Private password:\n  admin123\n• Double-click .txt files\n• Images open in viewer";
+            infoLabel.Text = "\n💡 Info:\n• Private password: admin123";
             infoLabel.ForeColor = Color.Gray;
             infoLabel.Font = new Font("Segoe UI", 8);
-            infoLabel.Location = new Point(15, 260);
+            infoLabel.Location = new Point(10, 220);
             infoLabel.AutoSize = true;
 
             leftPanel.Controls.Add(quickLabel);
             leftPanel.Controls.Add(btnDocuments);
             leftPanel.Controls.Add(btnDownloads);
             leftPanel.Controls.Add(btnPrivate);
-            leftPanel.Controls.Add(btnNewFolderQuick);
+            leftPanel.Controls.Add(btnNewFolder);
             leftPanel.Controls.Add(infoLabel);
 
-            // Main Area
             Panel mainPanel = new Panel();
             mainPanel.Dock = DockStyle.Fill;
             mainPanel.Padding = new Padding(10);
@@ -131,43 +127,42 @@ namespace MiniOS_GUI
             fileList.ForeColor = Color.White;
             fileList.Font = new Font("Segoe UI", 10);
             fileList.MultiSelect = false;
+            fileList.HideSelection = false;
+            fileList.Activation = ItemActivation.OneClick;
             fileList.DoubleClick += FileList_DoubleClick;
             fileList.KeyDown += FileList_KeyDown;
+
             fileList.Columns.Add("Name", 350);
             fileList.Columns.Add("Size", 100, HorizontalAlignment.Right);
-            fileList.Columns.Add("Type", 120);
-            fileList.Columns.Add("Modified", 140);
+            fileList.Columns.Add("Type", 100);
+            fileList.Columns.Add("Modified", 130);
 
-            // Bottom Action Bar
             Panel actionBar = new Panel();
             actionBar.Dock = DockStyle.Bottom;
-            actionBar.Height = 55;
+            actionBar.Height = 50;
             actionBar.BackColor = Color.FromArgb(24, 30, 38);
 
-            btnNewFolder = CreateActionButton("📁 New Folder", 10, 10);
-            btnNewFolder.Click += BtnNewFolder_Click;
-            btnNewText = CreateActionButton("📝 New Text", 120, 10);
+            btnNewText = CreateActionButton("📝 New Text", 10, 8);
             btnNewText.Click += BtnNewText_Click;
-            btnImageView = CreateActionButton("🖼 Image Viewer", 230, 10);
-            btnImageView.Click += BtnImageView_Click;
-            btnDelete = CreateActionButton("🗑 Delete", 350, 10);
+
+            btnDelete = CreateActionButton("🗑 Delete", 120, 8);
             btnDelete.Click += BtnDelete_Click;
-            btnRename = CreateActionButton("✏ Rename", 460, 10);
+
+            btnRename = CreateActionButton("✏ Rename", 230, 8);
             btnRename.Click += BtnRename_Click;
 
             lblStatus = new Label();
             lblStatus.ForeColor = Color.Gray;
-            lblStatus.Location = new Point(580, 20);
+            lblStatus.Location = new Point(350, 18);
             lblStatus.AutoSize = true;
 
-            actionBar.Controls.Add(btnNewFolder);
             actionBar.Controls.Add(btnNewText);
-            actionBar.Controls.Add(btnImageView);
             actionBar.Controls.Add(btnDelete);
             actionBar.Controls.Add(btnRename);
             actionBar.Controls.Add(lblStatus);
 
             mainPanel.Controls.Add(fileList);
+
             Controls.Add(mainPanel);
             Controls.Add(leftPanel);
             Controls.Add(toolbar);
@@ -176,31 +171,44 @@ namespace MiniOS_GUI
 
         private Button CreateToolButton(string text, int x, int y)
         {
-            Button btn = new Button() { Text = text, Size = new Size(35, 32), Location = new Point(x, y), BackColor = Color.FromArgb(35, 42, 52), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
-            btn.MouseEnter += (s, e) => btn.BackColor = Color.FromArgb(50, 60, 70);
-            btn.MouseLeave += (s, e) => btn.BackColor = Color.FromArgb(35, 42, 52);
-            return btn;
+            return new Button { Text = text, Size = new Size(30, 30), Location = new Point(x, y), BackColor = Color.FromArgb(35, 42, 52), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
         }
 
         private Button CreateQuickButton(string text, int x, int y)
         {
-            Button btn = new Button() { Text = text, Size = new Size(190, 40), Location = new Point(x, y), TextAlign = ContentAlignment.MiddleLeft, BackColor = Color.FromArgb(30, 36, 44), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
-            btn.MouseEnter += (s, e) => btn.BackColor = Color.FromArgb(45, 55, 65);
-            btn.MouseLeave += (s, e) => btn.BackColor = Color.FromArgb(30, 36, 44);
-            return btn;
+            return new Button { Text = text, Size = new Size(180, 35), Location = new Point(x, y), TextAlign = ContentAlignment.MiddleLeft, BackColor = Color.FromArgb(30, 36, 44), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
         }
 
         private Button CreateActionButton(string text, int x, int y)
         {
-            Button btn = new Button() { Text = text, Size = new Size(105, 38), Location = new Point(x, y), BackColor = Color.FromArgb(35, 42, 52), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
-            btn.MouseEnter += (s, e) => btn.BackColor = Color.FromArgb(50, 60, 70);
-            btn.MouseLeave += (s, e) => btn.BackColor = Color.FromArgb(35, 42, 52);
-            return btn;
+            return new Button { Text = text, Size = new Size(100, 35), Location = new Point(x, y), BackColor = Color.FromArgb(35, 42, 52), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
         }
 
-        private void LoadPath(string path)
+        // ── Get short folder name for passing to backend (relative) ──
+        private string FolderToken(string fullPath)
         {
-            if (string.IsNullOrEmpty(path) || !Directory.Exists(path)) return;
+            if (fullPath.StartsWith(documentsPath)) return "MiniOS_Documents";
+            if (fullPath.StartsWith(downloadsPath)) return "MiniOS_Downloads";
+            if (fullPath.StartsWith(privatePath)) return "MiniOS_Private";
+            // subfolder: manually compute relative path (compatible with .NET Framework 4.7.2)
+            string basePath = Application.StartupPath.TrimEnd('\\') + "\\";
+            if (fullPath.StartsWith(basePath, StringComparison.OrdinalIgnoreCase))
+                return fullPath.Substring(basePath.Length);
+            return fullPath; // fallback: return as-is
+        }
+
+        public void LoadPath(string path)
+        {
+            if (string.IsNullOrEmpty(path) || !Directory.Exists(path))
+            {
+                if (path != null && path.Contains("Private") && !isPrivateUnlocked)
+                {
+                    lblStatus.Text = "🔒 Private folder locked";
+                    return;
+                }
+                return;
+            }
+
             currentPath = path;
             pathBar.Text = GetDisplayPath(currentPath);
             fileList.Items.Clear();
@@ -227,9 +235,27 @@ namespace MiniOS_GUI
                     item.Tag = file; fileList.Items.Add(item);
                 }
 
-                lblStatus.Text = $"{fileList.Items.Count} items | Total: {FormatSize(GetFolderSize(currentPath))}";
+                long totalSize = GetFolderSize(currentPath);
+                lblStatus.Text = $"{fileList.Items.Count} items | Total: {FormatSize(totalSize)}";
             }
-            catch (Exception ex) { MessageBox.Show($"Cannot access: {ex.Message}", "Error"); }
+            catch (Exception ex) { MessageBox.Show($"Error: {ex.Message}", "Error"); }
+        }
+
+        private string GetFileIcon(string ext)
+        {
+            if (ext == ".txt") return "📄";
+            if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".gif" || ext == ".bmp") return "🖼️";
+            return "📄";
+        }
+
+        private string GetFileType(string ext)
+        {
+            if (ext == ".txt") return "Text";
+            if (ext == ".png") return "PNG";
+            if (ext == ".jpg" || ext == ".jpeg") return "JPEG";
+            if (ext == ".gif") return "GIF";
+            if (ext == ".bmp") return "BMP";
+            return "File";
         }
 
         private string GetDisplayPath(string path)
@@ -239,23 +265,6 @@ namespace MiniOS_GUI
             if (path == privatePath && isPrivateUnlocked) return "🔓 Private Vault (Unlocked)";
             if (path == privatePath) return "🔒 Private Vault (Locked)";
             return Path.GetFileName(path);
-        }
-
-        private string GetFileIcon(string ext)
-        {
-            if (ext == ".txt") return "📄";
-            if (ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".gif" || ext == ".bmp") return "🖼";
-            return "📄";
-        }
-
-        private string GetFileType(string ext)
-        {
-            if (ext == ".txt") return "Text";
-            if (ext == ".jpg" || ext == ".jpeg") return "JPEG";
-            if (ext == ".png") return "PNG";
-            if (ext == ".gif") return "GIF";
-            if (ext == ".bmp") return "BMP";
-            return "File";
         }
 
         private string FormatSize(long bytes)
@@ -278,115 +287,191 @@ namespace MiniOS_GUI
             return size;
         }
 
+        // ── Private vault: password verified via Login.asm / FileExplorer.asm ──
         private void AccessPrivateFolder(Button btnPrivate)
         {
             if (!isPrivateUnlocked)
             {
-                Form passForm = new Form() { Text = "Private Vault Access", Size = new Size(350, 150), BackColor = Color.FromArgb(16, 24, 32), StartPosition = FormStartPosition.CenterParent, FormBorderStyle = FormBorderStyle.FixedDialog };
-                Label lbl = new Label() { Text = "Enter Private Vault Password:", ForeColor = Color.White, Location = new Point(20, 20), AutoSize = true };
-                TextBox txtPass = new TextBox() { Location = new Point(20, 50), Size = new Size(290, 25), PasswordChar = '*' };
-                Button btnOk = new Button() { Text = "UNLOCK", Location = new Point(20, 85), Size = new Size(100, 30), BackColor = Color.FromArgb(35, 42, 52), ForeColor = Color.White };
-                btnOk.Click += (s, ev) => {
-                    if (txtPass.Text == privatePassword)
+                Form passForm = new Form();
+                passForm.Text = "Private Vault";
+                passForm.Size = new Size(400, 180);
+                passForm.BackColor = Color.FromArgb(16, 24, 32);
+                passForm.StartPosition = FormStartPosition.CenterParent;
+
+                Label lbl = new Label { Text = "Enter Password:", ForeColor = Color.White, Location = new Point(25, 25), Size = new Size(100, 25) };
+
+                TextBox txtPass = new TextBox { Location = new Point(25, 55), Size = new Size(340, 25), PasswordChar = '*' };
+
+                Button btnOk = new Button { Text = "UNLOCK", Location = new Point(100, 100), Size = new Size(100, 35), BackColor = Color.FromArgb(35, 42, 52), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+                Button btnCancel = new Button { Text = "CANCEL", Location = new Point(220, 100), Size = new Size(100, 35), BackColor = Color.FromArgb(35, 42, 52), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+
+                btnOk.Click += (s, ev) =>
+                {
+                    // BACKEND: Assembly checks the password.
+                    string result = MiniOSBackend.RunToString($"explorer checkpass {txtPass.Text}");
+
+                    if (result.Contains("[ACCESS GRANTED]"))
                     {
                         isPrivateUnlocked = true;
                         btnPrivate.Text = "🔓 Private Vault (Unlocked)";
                         btnPrivate.BackColor = Color.FromArgb(30, 100, 30);
-                        CreateDummyFilesInPrivate();
                         LoadPath(privatePath);
                         passForm.Close();
-                        SystemLogForm.WriteLog("PRIVATE", "admin", "Private Vault Unlocked", "Access granted", "SUCCESS");
                     }
-                    else { MessageBox.Show("Invalid password!", "Access Denied"); }
+                    else
+                    {
+                        MessageBox.Show("Wrong password!");
+                    }
                 };
-                passForm.Controls.Add(lbl); passForm.Controls.Add(txtPass); passForm.Controls.Add(btnOk);
+                btnCancel.Click += (s, ev) => passForm.Close();
+
+                passForm.Controls.Add(lbl);
+                passForm.Controls.Add(txtPass);
+                passForm.Controls.Add(btnOk);
+                passForm.Controls.Add(btnCancel);
                 passForm.ShowDialog();
             }
             else LoadPath(privatePath);
         }
 
-        private void CreateDummyFilesInPrivate()
-        {
-            try
-            {
-                string dummy1 = Path.Combine(privatePath, "SecretNotes.txt");
-                if (!File.Exists(dummy1)) File.WriteAllText(dummy1, "🔒 CONFIDENTIAL - PRIVATE VAULT\n\nCreated: " + DateTime.Now);
-                string dummy2 = Path.Combine(privatePath, "Passwords.txt");
-                if (!File.Exists(dummy2)) File.WriteAllText(dummy2, "🔐 PASSWORD VAULT\n\nStore your sensitive information here.");
-                string dummyFolder = Path.Combine(privatePath, "Backup");
-                if (!Directory.Exists(dummyFolder)) Directory.CreateDirectory(dummyFolder);
-            }
-            catch { }
-        }
-
         private void BtnNewFolder_Click(object sender, EventArgs e)
         {
-            Form folderForm = new Form() { Text = "New Folder", Size = new Size(350, 120), BackColor = Color.FromArgb(16, 24, 32), StartPosition = FormStartPosition.CenterParent, FormBorderStyle = FormBorderStyle.FixedDialog };
-            Label lbl = new Label() { Text = "Folder name:", ForeColor = Color.White, Location = new Point(20, 20), AutoSize = true };
-            TextBox txtName = new TextBox() { Location = new Point(20, 45), Size = new Size(290, 25), Text = "NewFolder" };
-            Button btnOk = new Button() { Text = "CREATE", Location = new Point(20, 80), Size = new Size(100, 30), BackColor = Color.FromArgb(35, 42, 52), ForeColor = Color.White };
-            btnOk.Click += (s, ev) => {
+            Form folderForm = new Form();
+            folderForm.Text = "Create New Folder";
+            folderForm.Size = new Size(420, 170);
+            folderForm.BackColor = Color.FromArgb(16, 24, 32);
+            folderForm.StartPosition = FormStartPosition.CenterParent;
+            folderForm.FormBorderStyle = FormBorderStyle.FixedDialog;
+            folderForm.MaximizeBox = false;
+            folderForm.MinimizeBox = false;
+
+            Label lbl = new Label { Text = "Folder name:", ForeColor = Color.White, Font = new Font("Segoe UI", 10), Location = new Point(20, 25), Size = new Size(100, 25) };
+            TextBox txtName = new TextBox { Location = new Point(20, 55), Size = new Size(365, 25), Font = new Font("Segoe UI", 10), Text = "NewFolder", BackColor = Color.FromArgb(30, 36, 44), ForeColor = Color.White, BorderStyle = BorderStyle.FixedSingle };
+
+            Button btnCreate = new Button { Text = "CREATE", Location = new Point(100, 100), Size = new Size(100, 35), BackColor = Color.FromArgb(35, 42, 52), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 10, FontStyle.Bold) };
+            Button btnCancel = new Button { Text = "CANCEL", Location = new Point(220, 100), Size = new Size(100, 35), BackColor = Color.FromArgb(35, 42, 52), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 10, FontStyle.Bold) };
+
+            btnCreate.Click += (s, ev) =>
+            {
                 string folderName = txtName.Text.Trim();
-                if (!string.IsNullOrEmpty(folderName))
+                if (string.IsNullOrEmpty(folderName)) { MessageBox.Show("Please enter a folder name!", "Warning"); return; }
+
+                string newPath = Path.Combine(currentPath, folderName);
+                if (Directory.Exists(newPath)) { MessageBox.Show("Folder already exists!", "Error"); return; }
+
+                string folderToken = FolderToken(currentPath);
+                // BACKEND: Assembly creates the directory.
+                string result = MiniOSBackend.RunToString($"explorer mkdir {folderToken} {folderName}");
+
+                if (result.Contains("[OK]") || Directory.Exists(newPath))
                 {
-                    string newPath = Path.Combine(currentPath, folderName);
-                    if (!Directory.Exists(newPath)) { Directory.CreateDirectory(newPath); LoadPath(currentPath); folderForm.Close(); }
-                    else MessageBox.Show("Folder already exists!", "Error");
+                    LoadPath(currentPath);
+                    folderForm.Close();
+                }
+                else
+                {
+                    // Fallback: create via C# if backend output is unavailable.
+                    try { Directory.CreateDirectory(newPath); LoadPath(currentPath); folderForm.Close(); }
+                    catch (Exception ex) { MessageBox.Show($"Error: {ex.Message}", "Error"); }
                 }
             };
-            folderForm.Controls.Add(lbl); folderForm.Controls.Add(txtName); folderForm.Controls.Add(btnOk);
+
+            btnCancel.Click += (s, ev) => folderForm.Close();
+            txtName.KeyPress += (s, ev) => { if (ev.KeyChar == (char)13) btnCreate.PerformClick(); };
+
+            folderForm.Controls.Add(lbl);
+            folderForm.Controls.Add(txtName);
+            folderForm.Controls.Add(btnCreate);
+            folderForm.Controls.Add(btnCancel);
             folderForm.ShowDialog();
         }
 
+        // ── Create new text file via Assembly backend ──
         private void BtnNewText_Click(object sender, EventArgs e)
         {
             string fileName = $"NewFile_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
-            string filePath = Path.Combine(currentPath, fileName);
-            File.WriteAllText(filePath, $"Created: {DateTime.Now}\n\nWrite your content here...");
+            string content = $"Created: {DateTime.Now}\r\n\r\nWrite your content here...";
+            string folderToken = FolderToken(currentPath);
+
+            // BACKEND: Assembly creates the file.
+            string result = MiniOSBackend.RunToString($"explorer create {folderToken} {fileName} {content}");
+
+            // Reload regardless (file should exist on disk now)
             LoadPath(currentPath);
-            SystemLogForm.WriteLog("FILE", "admin", "Text File Created", fileName, "SUCCESS");
-            TextEditorForm editor = new TextEditorForm(filePath);
-            editor.Show();
         }
 
-        private void BtnImageView_Click(object sender, EventArgs e)
-        {
-            ImageViewerForm viewer = new ImageViewerForm(currentPath);
-            viewer.Show();
-        }
-
+        // ── Delete file or folder via Assembly backend ──
         private void BtnDelete_Click(object sender, EventArgs e)
         {
-            if (fileList.SelectedItems.Count == 0) { MessageBox.Show("Select an item to delete!", "Info"); return; }
+            if (fileList.SelectedItems.Count == 0) { MessageBox.Show("Select an item to delete!"); return; }
+
             string path = fileList.SelectedItems[0].Tag.ToString();
             bool isFolder = Directory.Exists(path);
             string name = fileList.SelectedItems[0].Text.Substring(2);
-            if (MessageBox.Show($"Delete '{name}'?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+
+            if (MessageBox.Show($"Delete '{name}'?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
             {
-                try { if (isFolder) Directory.Delete(path, true); else File.Delete(path); LoadPath(currentPath); }
-                catch (Exception ex) { MessageBox.Show($"Cannot delete: {ex.Message}", "Error"); }
+                if (isFolder)
+                {
+                    // Folders: use C# recursive delete (Assembly DeleteFileA only handles files)
+                    try { Directory.Delete(path, true); LoadPath(currentPath); }
+                    catch (Exception ex) { MessageBox.Show($"Error: {ex.Message}"); }
+                }
+                else
+                {
+                    string folderToken = FolderToken(Path.GetDirectoryName(path));
+                    // BACKEND: Assembly deletes the file.
+                    string result = MiniOSBackend.RunToString($"explorer delete {folderToken} {Path.GetFileName(path)}");
+
+                    if (result.Contains("[OK]") || !File.Exists(path))
+                        LoadPath(currentPath);
+                    else
+                    {
+                        // Fallback
+                        try { File.Delete(path); LoadPath(currentPath); }
+                        catch (Exception ex) { MessageBox.Show($"Error: {ex.Message}"); }
+                    }
+                }
             }
         }
 
         private void BtnRename_Click(object sender, EventArgs e)
         {
-            if (fileList.SelectedItems.Count == 0) { MessageBox.Show("Select an item to rename!", "Info"); return; }
+            if (fileList.SelectedItems.Count == 0) { MessageBox.Show("Select an item to rename!"); return; }
+
             string oldPath = fileList.SelectedItems[0].Tag.ToString();
             string oldName = fileList.SelectedItems[0].Text.Substring(2);
-            Form renameForm = new Form() { Text = "Rename", Size = new Size(350, 120), BackColor = Color.FromArgb(16, 24, 32), StartPosition = FormStartPosition.CenterParent, FormBorderStyle = FormBorderStyle.FixedDialog };
-            Label lbl = new Label() { Text = "New name:", ForeColor = Color.White, Location = new Point(20, 20), AutoSize = true };
-            TextBox txtName = new TextBox() { Location = new Point(20, 45), Size = new Size(290, 25), Text = oldName };
-            Button btnOk = new Button() { Text = "RENAME", Location = new Point(20, 80), Size = new Size(100, 30), BackColor = Color.FromArgb(35, 42, 52), ForeColor = Color.White };
-            btnOk.Click += (s, ev) => {
-                string newName = txtName.Text.Trim();
-                if (!string.IsNullOrEmpty(newName) && newName != oldName)
+
+            Form renameForm = new Form { Text = "Rename", Size = new Size(400, 150), BackColor = Color.FromArgb(16, 24, 32), StartPosition = FormStartPosition.CenterParent, FormBorderStyle = FormBorderStyle.FixedDialog };
+
+            Label lbl = new Label { Text = "New name:", ForeColor = Color.White, Location = new Point(25, 25), Size = new Size(100, 25) };
+            TextBox txt = new TextBox { Text = oldName, Location = new Point(25, 55), Size = new Size(340, 25) };
+            Button btnOK = new Button { Text = "RENAME", Location = new Point(100, 100), Size = new Size(100, 35), BackColor = Color.FromArgb(35, 42, 52), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+            Button btnCancel = new Button { Text = "CANCEL", Location = new Point(220, 100), Size = new Size(100, 35), BackColor = Color.FromArgb(35, 42, 52), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+
+            btnOK.Click += (s, ev) =>
+            {
+                string newName = txt.Text.Trim();
+                if (string.IsNullOrEmpty(newName)) { MessageBox.Show("Name cannot be empty!"); return; }
+                if (newName == oldName) { renameForm.Close(); return; }
+
+                string newPath = Path.Combine(Path.GetDirectoryName(oldPath), newName);
+                if (Directory.Exists(newPath) || File.Exists(newPath)) { MessageBox.Show("Already exists!"); return; }
+
+                    // BACKEND: no rename command exists in FileExplorer.asm, so the GUI keeps a C# move fallback.
+                try
                 {
-                    string newPath = Path.Combine(Path.GetDirectoryName(oldPath), newName);
-                    try { if (Directory.Exists(oldPath)) Directory.Move(oldPath, newPath); else File.Move(oldPath, newPath); LoadPath(currentPath); renameForm.Close(); }
-                    catch (Exception ex) { MessageBox.Show($"Cannot rename: {ex.Message}", "Error"); }
+                    if (Directory.Exists(oldPath)) Directory.Move(oldPath, newPath);
+                    else File.Move(oldPath, newPath);
+                    LoadPath(currentPath);
+                    renameForm.Close();
                 }
+                catch (Exception ex) { MessageBox.Show($"Error: {ex.Message}"); }
             };
-            renameForm.Controls.Add(lbl); renameForm.Controls.Add(txtName); renameForm.Controls.Add(btnOk);
+            btnCancel.Click += (s, ev) => renameForm.Close();
+
+            renameForm.Controls.Add(lbl); renameForm.Controls.Add(txt);
+            renameForm.Controls.Add(btnOK); renameForm.Controls.Add(btnCancel);
             renameForm.ShowDialog();
         }
 
@@ -394,19 +479,66 @@ namespace MiniOS_GUI
         {
             if (fileList.SelectedItems.Count == 0) return;
             string path = fileList.SelectedItems[0].Tag.ToString();
-            if (Directory.Exists(path)) LoadPath(path);
-            else if (File.Exists(path))
+
+            if (Directory.Exists(path))
             {
-                string ext = Path.GetExtension(path).ToLower();
-                if (ext == ".txt") new TextEditorForm(path).Show();
-                else if (ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".gif" || ext == ".bmp") new ImageViewerForm(Path.GetDirectoryName(path)).Show();
-                else System.Diagnostics.Process.Start(path);
+                LoadPath(path);
+                return;
             }
+
+            if (!File.Exists(path)) return;
+
+            string extension = Path.GetExtension(path).ToLower();
+
+            // Images -> ImageViewer
+            if (extension == ".png" || extension == ".jpg" || extension == ".jpeg"
+                || extension == ".gif" || extension == ".bmp")
+            {
+                ImageViewerForm viewer = new ImageViewerForm(Path.GetDirectoryName(path));
+                viewer.Show();
+                viewer.LoadImage(path);
+            }
+            // Text files AND files with no/unknown extension -> BuiltInNotepad
+            else if (extension == ".txt" || extension == ".log" || extension == ".csv"
+                     || extension == ".ini" || extension == ".cfg" || extension == "")
+            {
+                new BuiltInNotepad(path, true).Show();
+            }
+            else
+            {
+                // Ask: open in NOVA-OS Notepad or system default?
+                var result = MessageBox.Show(
+                    "Open '" + Path.GetFileName(path) + "' in NOVA-OS Notepad?\n\nClick No to use system default.",
+                    "Open File", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (result == DialogResult.Yes)
+                    new BuiltInNotepad(path, true).Show();
+                else
+                    System.Diagnostics.Process.Start(path);
+            }
+
+            SystemLogForm.WriteLog("FILE", "admin", "File Opened", Path.GetFileName(path), "SUCCESS");
         }
 
-        private void FileList_KeyDown(object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Delete) BtnDelete_Click(null, null); else if (e.KeyCode == Keys.F2) BtnRename_Click(null, null); }
-        private void BtnBack_Click(object sender, EventArgs e) { string parent = Directory.GetParent(currentPath)?.FullName; if (parent != null) LoadPath(parent); }
+        private void FileList_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Delete) BtnDelete_Click(null, null);
+            else if (e.KeyCode == Keys.F2) BtnRename_Click(null, null);
+        }
+
+        private void BtnBack_Click(object sender, EventArgs e)
+        {
+            string parent = Directory.GetParent(currentPath)?.FullName;
+            if (parent != null) LoadPath(parent);
+        }
+
         private void BtnRefresh_Click(object sender, EventArgs e) { LoadPath(currentPath); }
-        private void StartRefresh() { refreshTimer = new Timer(); refreshTimer.Interval = 3000; refreshTimer.Tick += (s, e) => { if (this.Visible) LoadPath(currentPath); }; refreshTimer.Start(); }
+
+        private void StartRefresh()
+        {
+            refreshTimer = new Timer();
+            refreshTimer.Interval = 3000;
+            refreshTimer.Tick += (s, e) => { if (this.Visible) LoadPath(currentPath); };
+            refreshTimer.Start();
+        }
     }
 }

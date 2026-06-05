@@ -6,5 +6,5 @@
     <Platform Name="x86" />
   </Configurations>
   <Project Path="MiniOS/MiniOS.vcxproj" Id="d95947dd-07ce-40b0-802c-d9c8566e4d4a" />
-  <Project Path="MiniOS_GUI/MiniOS_GUI.csproj" Id="137bf782-4c23-4b1a-83be-c866b4fb6d8f" />
+  <Project Path="MiniOS_GUI/NOVOS_GUI.csproj" Id="137bf782-4c23-4b1a-83be-c866b4fb6d8f" />
 </Solution>

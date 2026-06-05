@@ -7,246 +7,137 @@ namespace MiniOS_GUI
 {
     public class ImageViewerForm : Form
     {
-        private PictureBox pictureBox;
+        private TableLayoutPanel mainLayout;
         private ListView imageList;
-        private string currentFolder;
-        private string[] imageExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
-        private Button btnUpload, btnDelete, btnRefresh, btnZoomIn, btnZoomOut, btnReset;
-        private Label lblStatus, lblImageInfo;
         private Panel picturePanel;
-        private float currentZoom = 1.0f;
-        private string currentImagePath = null;
+        private PictureBox pictureBox;
+        private Label lblImageCount, lblStatus;
+        private Button btnUpload, btnDelete, btnRefresh;
+
+        private string currentFolder;
+        private string currentImage = null;
+        private string[] exts = { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
 
         public ImageViewerForm(string folderPath)
         {
             currentFolder = folderPath;
+
+            // Default window size - PEHLE SET KARO
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.Size = new Size(1100, 700);
+            this.MinimumSize = new Size(900, 550);
+            this.BackColor = Color.FromArgb(16, 24, 32);
+
             InitializeComponent();
             LoadImages();
-            this.WindowState = FormWindowState.Maximized;
-            SystemLogForm.WriteLog("IMAGE", "admin", "Image Viewer Opened", currentFolder, "SUCCESS");
         }
 
         private void InitializeComponent()
         {
-            this.Text = "MiniOS Image Viewer";
-            this.BackColor = Color.FromArgb(16, 24, 32);
-            this.StartPosition = FormStartPosition.CenterScreen;
+            mainLayout = new TableLayoutPanel();
+            mainLayout.Dock = DockStyle.Fill;
+            mainLayout.ColumnCount = 2;
+            mainLayout.RowCount = 1;
+            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 260));
+            mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            mainLayout.BackColor = Color.FromArgb(16, 24, 32);
 
-            SplitContainer splitContainer = new SplitContainer();
-            splitContainer.Dock = DockStyle.Fill;
-            splitContainer.Orientation = Orientation.Vertical;
-            splitContainer.SplitterDistance = 280;
-
-            // ========== LEFT PANEL ==========
+            // LEFT PANEL
             Panel leftPanel = new Panel();
             leftPanel.Dock = DockStyle.Fill;
             leftPanel.BackColor = Color.FromArgb(20, 26, 34);
-            leftPanel.Padding = new Padding(5);
+            leftPanel.Padding = new Padding(8);
 
-            Label titleLabel = new Label();
-            titleLabel.Text = "📸 IMAGE GALLERY";
-            titleLabel.ForeColor = Color.DeepSkyBlue;
-            titleLabel.Font = new Font("Segoe UI", 14, FontStyle.Bold);
-            titleLabel.Location = new Point(10, 10);
-            titleLabel.AutoSize = true;
+            Label lblTitle = new Label();
+            lblTitle.Text = "📸 GALLERY";
+            lblTitle.ForeColor = Color.DeepSkyBlue;
+            lblTitle.Font = new Font("Segoe UI", 12, FontStyle.Bold);
+            lblTitle.Location = new Point(8, 8);
+            lblTitle.AutoSize = true;
+
+            lblImageCount = new Label();
+            lblImageCount.Text = "0 images";
+            lblImageCount.ForeColor = Color.Gray;
+            lblImageCount.Font = new Font("Segoe UI", 9);
+            lblImageCount.Location = new Point(8, 34);
+            lblImageCount.AutoSize = true;
 
             imageList = new ListView();
-            imageList.Location = new Point(10, 50);
-            imageList.Size = new Size(260, 500);
+            imageList.Location = new Point(8, 60);
+            imageList.Size = new Size(240, 500);
             imageList.View = View.LargeIcon;
             imageList.LargeImageList = new ImageList();
-            imageList.LargeImageList.ImageSize = new Size(80, 80);
-            imageList.DoubleClick += ImageList_DoubleClick;
-            imageList.KeyDown += (s, e) => { if (e.KeyCode == Keys.Delete) BtnDelete_Click(null, null); };
+            imageList.LargeImageList.ImageSize = new Size(100, 100);
+            imageList.BackColor = Color.FromArgb(27, 31, 39);
+            imageList.ForeColor = Color.White;
+            imageList.DoubleClick += (s, e) => OpenSelectedImage();
 
-            btnUpload = CreateButton("📤 UPLOAD", 10, 560, 260, 40);
+            btnUpload = new Button();
+            btnUpload.Text = "📤 UPLOAD";
+            btnUpload.Location = new Point(8, 570);
+            btnUpload.Size = new Size(240, 35);
+            btnUpload.BackColor = Color.FromArgb(35, 42, 52);
+            btnUpload.ForeColor = Color.White;
+            btnUpload.FlatStyle = FlatStyle.Flat;
             btnUpload.Click += BtnUpload_Click;
 
-            btnDelete = CreateButton("🗑 DELETE", 10, 610, 125, 40);
+            btnDelete = new Button();
+            btnDelete.Text = "🗑 DELETE";
+            btnDelete.Location = new Point(8, 615);
+            btnDelete.Size = new Size(115, 35);
+            btnDelete.BackColor = Color.FromArgb(100, 30, 30);
+            btnDelete.ForeColor = Color.White;
+            btnDelete.FlatStyle = FlatStyle.Flat;
             btnDelete.Click += BtnDelete_Click;
 
-            btnRefresh = CreateButton("🔄 REFRESH", 145, 610, 125, 40);
+            btnRefresh = new Button();
+            btnRefresh.Text = "🔄 REFRESH";
+            btnRefresh.Location = new Point(133, 615);
+            btnRefresh.Size = new Size(115, 35);
+            btnRefresh.BackColor = Color.FromArgb(35, 42, 52);
+            btnRefresh.ForeColor = Color.White;
+            btnRefresh.FlatStyle = FlatStyle.Flat;
             btnRefresh.Click += (s, e) => LoadImages();
 
-            leftPanel.Controls.Add(titleLabel);
+            leftPanel.Controls.Add(lblTitle);
+            leftPanel.Controls.Add(lblImageCount);
             leftPanel.Controls.Add(imageList);
             leftPanel.Controls.Add(btnUpload);
             leftPanel.Controls.Add(btnDelete);
             leftPanel.Controls.Add(btnRefresh);
 
-            // ========== RIGHT PANEL ==========
+            // RIGHT PANEL
             Panel rightPanel = new Panel();
             rightPanel.Dock = DockStyle.Fill;
             rightPanel.BackColor = Color.FromArgb(16, 24, 32);
-            rightPanel.Padding = new Padding(10);
+            rightPanel.Padding = new Padding(5);
 
-            // Top Toolbar
-            Panel toolbar = new Panel();
-            toolbar.Dock = DockStyle.Top;
-            toolbar.Height = 50;
-            toolbar.BackColor = Color.FromArgb(24, 30, 38);
-
-            btnZoomIn = CreateToolButton("🔍 ZOOM IN", 10);
-            btnZoomIn.Click += BtnZoomIn_Click;
-
-            btnZoomOut = CreateToolButton("🔍 ZOOM OUT", 120);
-            btnZoomOut.Click += BtnZoomOut_Click;
-
-            btnReset = CreateToolButton("📐 RESET", 230);
-            btnReset.Click += BtnReset_Click;
-
-            lblImageInfo = new Label();
-            lblImageInfo.ForeColor = Color.Cyan;
-            lblImageInfo.Font = new Font("Segoe UI", 9);
-            lblImageInfo.Location = new Point(340, 15);
-            lblImageInfo.AutoSize = true;
-            lblImageInfo.Text = "No image selected";
-
-            toolbar.Controls.Add(btnZoomIn);
-            toolbar.Controls.Add(btnZoomOut);
-            toolbar.Controls.Add(btnReset);
-            toolbar.Controls.Add(lblImageInfo);
-
-            // Picture Panel with AutoScroll
             picturePanel = new Panel();
             picturePanel.Dock = DockStyle.Fill;
             picturePanel.AutoScroll = true;
             picturePanel.BackColor = Color.Black;
-            picturePanel.AutoScrollMinSize = new Size(100, 100);
 
             pictureBox = new PictureBox();
-            pictureBox.SizeMode = PictureBoxSizeMode.AutoSize;
+            pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+            pictureBox.Dock = DockStyle.Fill;
             pictureBox.BackColor = Color.Black;
-            pictureBox.Location = new Point(0, 0);
 
             picturePanel.Controls.Add(pictureBox);
-
-            // Center image when panel resizes
-            picturePanel.Resize += (s, e) => CenterImage();
 
             lblStatus = new Label();
             lblStatus.Dock = DockStyle.Bottom;
             lblStatus.Height = 30;
             lblStatus.ForeColor = Color.Gray;
-            lblStatus.Text = "Double-click any image to view | Use mouse wheel to zoom | Drag to pan";
+            lblStatus.Text = "Ready - Double-click an image to view";
             lblStatus.TextAlign = ContentAlignment.MiddleCenter;
             lblStatus.BackColor = Color.FromArgb(24, 30, 38);
 
-            rightPanel.Controls.Add(toolbar);
             rightPanel.Controls.Add(picturePanel);
             rightPanel.Controls.Add(lblStatus);
 
-            splitContainer.Panel1.Controls.Add(leftPanel);
-            splitContainer.Panel2.Controls.Add(rightPanel);
-            Controls.Add(splitContainer);
-
-            // Mouse wheel zoom
-            pictureBox.MouseWheel += PictureBox_MouseWheel;
-        }
-
-        private Button CreateButton(string text, int x, int y, int width, int height)
-        {
-            Button btn = new Button();
-            btn.Text = text;
-            btn.Size = new Size(width, height);
-            btn.Location = new Point(x, y);
-            btn.BackColor = Color.FromArgb(35, 42, 52);
-            btn.ForeColor = Color.White;
-            btn.FlatStyle = FlatStyle.Flat;
-            btn.Font = new Font("Segoe UI", 10, FontStyle.Bold);
-            return btn;
-        }
-
-        private Button CreateToolButton(string text, int x)
-        {
-            Button btn = new Button();
-            btn.Text = text;
-            btn.Size = new Size(100, 35);
-            btn.Location = new Point(x, 8);
-            btn.BackColor = Color.FromArgb(35, 42, 52);
-            btn.ForeColor = Color.White;
-            btn.FlatStyle = FlatStyle.Flat;
-            btn.Font = new Font("Segoe UI", 9, FontStyle.Bold);
-            return btn;
-        }
-
-        private void CenterImage()
-        {
-            if (pictureBox.Image == null) return;
-
-            // Calculate center position
-            int x = (picturePanel.Width - pictureBox.Width) / 2;
-            int y = (picturePanel.Height - pictureBox.Height) / 2;
-
-            // Make sure it doesn't go negative
-            x = Math.Max(0, x);
-            y = Math.Max(0, y);
-
-            pictureBox.Location = new Point(x, y);
-        }
-
-        private void UpdateZoom()
-        {
-            if (string.IsNullOrEmpty(currentImagePath) || !File.Exists(currentImagePath)) return;
-
-            try
-            {
-                using (var tempImage = Image.FromFile(currentImagePath))
-                {
-                    int newWidth = (int)(tempImage.Width * currentZoom);
-                    int newHeight = (int)(tempImage.Height * currentZoom);
-
-                    pictureBox.Size = new Size(newWidth, newHeight);
-                    pictureBox.Image = new Bitmap(tempImage, newWidth, newHeight);
-                }
-
-                CenterImage();
-                lblImageInfo.Text = $"Zoom: {currentZoom * 100:F0}% | {pictureBox.Width} x {pictureBox.Height}";
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        private void PictureBox_MouseWheel(object sender, MouseEventArgs e)
-        {
-            if (pictureBox.Image == null) return;
-
-            float oldZoom = currentZoom;
-
-            if (e.Delta > 0)
-                currentZoom *= 1.1f;
-            else
-                currentZoom /= 1.1f;
-
-            currentZoom = Math.Max(0.1f, Math.Min(5.0f, currentZoom));
-
-            if (Math.Abs(oldZoom - currentZoom) > 0.01f)
-                UpdateZoom();
-        }
-
-        private void BtnZoomIn_Click(object sender, EventArgs e)
-        {
-            if (pictureBox.Image == null) return;
-            currentZoom *= 1.2f;
-            currentZoom = Math.Min(5.0f, currentZoom);
-            UpdateZoom();
-        }
-
-        private void BtnZoomOut_Click(object sender, EventArgs e)
-        {
-            if (pictureBox.Image == null) return;
-            currentZoom /= 1.2f;
-            currentZoom = Math.Max(0.1f, currentZoom);
-            UpdateZoom();
-        }
-
-        private void BtnReset_Click(object sender, EventArgs e)
-        {
-            if (pictureBox.Image == null) return;
-            currentZoom = 1.0f;
-            UpdateZoom();
+            mainLayout.Controls.Add(leftPanel, 0, 0);
+            mainLayout.Controls.Add(rightPanel, 1, 0);
+            Controls.Add(mainLayout);
         }
 
         private void LoadImages()
@@ -261,14 +152,14 @@ namespace MiniOS_GUI
             foreach (string file in Directory.GetFiles(currentFolder))
             {
                 string ext = Path.GetExtension(file).ToLower();
-                if (Array.Exists(imageExtensions, e => e == ext))
+                if (Array.Exists(exts, e => e == ext))
                 {
                     try
                     {
                         using (var img = Image.FromFile(file))
                         {
-                            Image thumbnail = img.GetThumbnailImage(80, 80, null, IntPtr.Zero);
-                            imageList.LargeImageList.Images.Add(thumbnail);
+                            Image thumb = img.GetThumbnailImage(100, 100, null, IntPtr.Zero);
+                            imageList.LargeImageList.Images.Add(thumb);
                         }
                         ListViewItem item = new ListViewItem(Path.GetFileName(file));
                         item.ImageIndex = index;
@@ -279,70 +170,73 @@ namespace MiniOS_GUI
                     catch { }
                 }
             }
-            lblStatus.Text = $"{imageList.Items.Count} images found | Double-click to view";
+
+            lblImageCount.Text = $"{imageList.Items.Count} images";
+            lblStatus.Text = $"{imageList.Items.Count} images in gallery | Double-click to view";
         }
 
-        private void ImageList_DoubleClick(object sender, EventArgs e)
+        public void LoadImage(string imagePath)
         {
-            if (imageList.SelectedItems.Count == 0) return;
-
-            currentImagePath = imageList.SelectedItems[0].Tag.ToString();
-            currentZoom = 1.0f;
-
             try
             {
+                // First, clear current image to release file lock
                 if (pictureBox.Image != null)
+                {
                     pictureBox.Image.Dispose();
+                    pictureBox.Image = null;
+                }
 
-                var img = Image.FromFile(currentImagePath);
-                pictureBox.Image = img;
-                pictureBox.Size = img.Size;
-
-                CenterImage();
-
-                FileInfo info = new FileInfo(currentImagePath);
-                lblImageInfo.Text = $"📷 {Path.GetFileName(currentImagePath)} | {info.Length / 1024} KB | {img.Width} x {img.Height} | Zoom: 100%";
-                lblStatus.Text = $"Viewing: {Path.GetFileName(currentImagePath)} | Use mouse wheel to zoom";
-
-                SystemLogForm.WriteLog("IMAGE", "admin", "Image Viewed", Path.GetFileName(currentImagePath), "SUCCESS");
+                // Load new image
+                pictureBox.Image = Image.FromFile(imagePath);
+                currentImage = imagePath;
+                lblStatus.Text = $"Viewing: {Path.GetFileName(imagePath)}";
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Cannot load image: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Error loading image: {ex.Message}", "Error");
             }
+        }
+
+        private void OpenSelectedImage()
+        {
+            if (imageList.SelectedItems.Count == 0) return;
+            string path = imageList.SelectedItems[0].Tag.ToString();
+            LoadImage(path);
         }
 
         private void BtnUpload_Click(object sender, EventArgs e)
         {
-            OpenFileDialog dialog = new OpenFileDialog();
-            dialog.Title = "Select Image to Upload";
-            dialog.Filter = "Image Files|*.jpg;*.jpeg;*.png;*.gif;*.bmp";
-            dialog.Multiselect = true;
+            OpenFileDialog dlg = new OpenFileDialog();
+            dlg.Title = "Select Images";
+            dlg.Filter = "Image Files|*.jpg;*.jpeg;*.png;*.gif;*.bmp";
+            dlg.Multiselect = true;
 
-            if (dialog.ShowDialog() == DialogResult.OK)
+            if (dlg.ShowDialog() == DialogResult.OK)
             {
-                int uploaded = 0;
-                foreach (string file in dialog.FileNames)
+                int count = 0;
+                foreach (string file in dlg.FileNames)
                 {
                     try
                     {
-                        string destPath = Path.Combine(currentFolder, Path.GetFileName(file));
-                        if (File.Exists(destPath))
+                        string dest = Path.Combine(currentFolder, Path.GetFileName(file));
+                        if (File.Exists(dest))
                         {
                             string name = Path.GetFileNameWithoutExtension(file);
                             string ext = Path.GetExtension(file);
-                            int counter = 1;
-                            while (File.Exists(Path.Combine(currentFolder, $"{name}_{counter}{ext}"))) counter++;
-                            destPath = Path.Combine(currentFolder, $"{name}_{counter}{ext}");
+                            int c = 1;
+                            while (File.Exists(Path.Combine(currentFolder, $"{name}_{c}{ext}"))) c++;
+                            dest = Path.Combine(currentFolder, $"{name}_{c}{ext}");
                         }
-                        File.Copy(file, destPath);
-                        uploaded++;
+                        File.Copy(file, dest);
+                        count++;
                     }
-                    catch (Exception ex) { MessageBox.Show($"Error: {ex.Message}", "Error"); }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error uploading: {ex.Message}", "Error");
+                    }
                 }
                 LoadImages();
-                MessageBox.Show($"Successfully uploaded {uploaded} image(s)!", "Upload Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                SystemLogForm.WriteLog("IMAGE", "admin", "Images Uploaded", $"{uploaded} files", "SUCCESS");
+                MessageBox.Show($"Uploaded {count} image(s)!");
             }
         }
 
@@ -354,24 +248,45 @@ namespace MiniOS_GUI
                 return;
             }
 
-            string imagePath = imageList.SelectedItems[0].Tag.ToString();
-            if (MessageBox.Show($"Delete '{Path.GetFileName(imagePath)}'?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+            string path = imageList.SelectedItems[0].Tag.ToString();
+            string fileName = Path.GetFileName(path);
+
+            // Confirm deletion
+            DialogResult result = MessageBox.Show($"Delete '{fileName}'?\n\nThis action cannot be undone.",
+                "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+
+            if (result != DialogResult.Yes) return;
+
+            try
             {
-                try
+                // IMPORTANT: If this image is currently being viewed, release it first
+                if (currentImage == path)
                 {
-                    File.Delete(imagePath);
-                    if (currentImagePath == imagePath)
+                    if (pictureBox.Image != null)
                     {
-                        pictureBox.Image?.Dispose();
+                        pictureBox.Image.Dispose();
                         pictureBox.Image = null;
-                        currentImagePath = null;
-                        lblImageInfo.Text = "No image selected";
                     }
-                    LoadImages();
-                    lblStatus.Text = $"Deleted: {Path.GetFileName(imagePath)}";
-                    SystemLogForm.WriteLog("IMAGE", "admin", "Image Deleted", Path.GetFileName(imagePath), "SUCCESS");
+                    currentImage = null;
+                    lblStatus.Text = "Ready - Double-click an image to view";
                 }
-                catch (Exception ex) { MessageBox.Show($"Cannot delete: {ex.Message}", "Error"); }
+
+                // Now delete the file
+                File.Delete(path);
+
+                // Refresh the image list
+                LoadImages();
+
+                // Log the deletion
+                SystemLogForm.WriteLog("IMAGE", "admin", "Image Deleted", fileName, "SUCCESS");
+
+                lblStatus.Text = $"Deleted: {fileName}";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Cannot delete '{fileName}':\n{ex.Message}", "Delete Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                SystemLogForm.WriteLog("ERROR", "admin", "Delete Failed", fileName, "FAILED");
             }
         }
     }

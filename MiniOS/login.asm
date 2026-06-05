@@ -14,62 +14,51 @@ includelib user32.lib
 
 .data
 
-usernamePrompt db 13,10,"Username: "
-uLen EQU ($-usernamePrompt)
+privatePrompt db 13,10,"🔒 PRIVATE VAULT ACCESS",13,10
+db "Enter Password: ",0
+pPromptLen EQU ($-privatePrompt)
 
-passwordPrompt db 13,10,"Password: "
-pLen EQU ($-passwordPrompt)
+accessGranted db 13,10,"Access Granted! Opening Private Vault...",13,10,0
+grantLen EQU ($-accessGranted)
 
-successMsg db 13,10,"Login Successful!",13,10
-sLen EQU ($-successMsg)
+accessDenied db 13,10,"Access Denied! Invalid Password.",13,10,0
+deniedLen EQU ($-accessDenied)
 
-failMsg db 13,10,"Invalid Username or Password!",13,10
-fLen EQU ($-failMsg)
+correctPass db "admin123",0
 
-correctUser db "admin",13,10,0
-correctPass db "1234",13,10,0
-
-userInput db 50 dup(0)
 passInput db 50 dup(0)
-
 bytesRead dd ?
 
 .code
 
 LoginSystem PROC PUBLIC
 
-    ; output handle
     invoke GetStdHandle,STD_OUTPUT_HANDLE
     mov ebx,eax
 
-    ; input handle
     invoke GetStdHandle,STD_INPUT_HANDLE
     mov esi,eax
 
-    ; USERNAME
-    invoke WriteConsoleA,ebx,ADDR usernamePrompt,uLen,0,0
-    invoke ReadConsoleA,esi,ADDR userInput,50,ADDR bytesRead,0
+    invoke WriteConsoleA,ebx,ADDR privatePrompt,pPromptLen,0,0
 
-    ; PASSWORD
-    invoke WriteConsoleA,ebx,ADDR passwordPrompt,pLen,0,0
     invoke ReadConsoleA,esi,ADDR passInput,50,ADDR bytesRead,0
 
-    ; username check
-    invoke lstrcmpA,ADDR userInput,ADDR correctUser
-    cmp eax,0
-    jne LOGIN_FAIL
+    mov eax,bytesRead
+    sub eax,2
+    mov byte ptr [passInput+eax],0
 
-    ; password check
     invoke lstrcmpA,ADDR passInput,ADDR correctPass
     cmp eax,0
-    jne LOGIN_FAIL
+    jne ACCESS_DENIED
 
-LOGIN_OK:
-    invoke WriteConsoleA,ebx,ADDR successMsg,sLen,0,0
+ACCESS_GRANTED:
+    invoke WriteConsoleA,ebx,ADDR accessGranted,grantLen,0,0
+    mov eax,1  ; Return 1 for success
     ret
 
-LOGIN_FAIL:
-    invoke WriteConsoleA,ebx,ADDR failMsg,fLen,0,0
+ACCESS_DENIED:
+    invoke WriteConsoleA,ebx,ADDR accessDenied,deniedLen,0,0
+    xor eax,eax  ; Return 0 for failure
     ret
 
 LoginSystem ENDP

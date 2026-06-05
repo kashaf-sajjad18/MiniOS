@@ -9,26 +9,20 @@ namespace MiniOS_GUI
         private ListView listView;
         private Timer refreshTimer;
         private Label lblStatus;
-        private Button btnRefresh;
-        private Button btnTerminate;
-        private Button btnStart;
+        private Button btnRefresh, btnTerminate, btnStart;
 
-        // Process status tracking
         private bool calculatorRunning = false;
         private bool timeServiceRunning = false;
-        private bool shellRunning = true;
-        private bool kernelRunning = true;
-
-        // Memory values
-        private int kernelMem = 256;
-        private int shellMem = 128;
-        private int calculatorMem = 64;
-        private int timeMem = 32;
-        private int taskMem = 64;
-        private int totalRAM = 4096;
 
         public TaskManagerForm()
         {
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.Size = new Size(620, 500);
+            this.MinimumSize = new Size(620, 500);
+            this.MaximumSize = new Size(620, 500);
+            this.BackColor = Color.FromArgb(16, 24, 32);
+            this.FormBorderStyle = FormBorderStyle.FixedSingle;
+
             BuildUI();
             RefreshProcessList();
             StartAutoRefresh();
@@ -37,12 +31,6 @@ namespace MiniOS_GUI
         private void BuildUI()
         {
             this.Text = "MiniOS Task Manager";
-            this.Size = new Size(600, 480);  // Clean size
-            this.MinimumSize = new Size(600, 480);
-            this.MaximumSize = new Size(600, 480);
-            this.BackColor = Color.FromArgb(16, 24, 32);
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.FormBorderStyle = FormBorderStyle.FixedSingle;  // Fixed size
 
             Label title = new Label();
             title.Text = "TASK MANAGER";
@@ -52,16 +40,15 @@ namespace MiniOS_GUI
             title.AutoSize = true;
 
             lblStatus = new Label();
-            lblStatus.Text = "Status: Running";
+            lblStatus.Text = "Status: Ready";
             lblStatus.ForeColor = Color.Lime;
             lblStatus.Font = new Font("Segoe UI", 9);
             lblStatus.Location = new Point(15, 45);
-            lblStatus.Size = new Size(550, 20);
+            lblStatus.Size = new Size(580, 20);
 
-            // ListView - Clean UI
             listView = new ListView();
             listView.Location = new Point(15, 70);
-            listView.Size = new Size(560, 310);
+            listView.Size = new Size(580, 310);
             listView.View = View.Details;
             listView.FullRowSelect = true;
             listView.GridLines = true;
@@ -70,15 +57,16 @@ namespace MiniOS_GUI
             listView.Font = new Font("Consolas", 10);
             listView.MultiSelect = false;
             listView.HideSelection = false;
-           
+            listView.Activation = ItemActivation.OneClick;
 
-            // Columns - 4 columns only
-            listView.Columns.Add("PID", 50, HorizontalAlignment.Center);
+            listView.SelectedIndexChanged += ListView_SelectedIndexChanged;
+
+            listView.Columns.Clear();
+            listView.Columns.Add("PID", 60, HorizontalAlignment.Center);
             listView.Columns.Add("PROCESS", 160, HorizontalAlignment.Left);
-            listView.Columns.Add("STATUS", 100, HorizontalAlignment.Center);
+            listView.Columns.Add("STATUS", 110, HorizontalAlignment.Center);
             listView.Columns.Add("MEMORY", 100, HorizontalAlignment.Right);
 
-            // Buttons
             btnRefresh = new Button();
             btnRefresh.Text = "REFRESH";
             btnRefresh.Size = new Size(90, 32);
@@ -107,7 +95,7 @@ namespace MiniOS_GUI
             btnStart.Click += BtnStart_Click;
 
             Label legend = new Label();
-            legend.Text = "🟢 Running  |  🔴 Terminated";
+            legend.Text = "🟢 Running  |  🔴 Terminated  |  Click to select → Then press TERMINATE or START";
             legend.ForeColor = Color.Gray;
             legend.Font = new Font("Segoe UI", 8);
             legend.Location = new Point(15, 440);
@@ -122,47 +110,88 @@ namespace MiniOS_GUI
             Controls.Add(legend);
         }
 
+        private void ListView_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (listView.SelectedItems.Count > 0)
+            {
+                string selected = listView.SelectedItems[0].SubItems[1].Text;
+                selected = selected.Replace("🟢 ", "").Replace("🔴 ", "");
+                string status = listView.SelectedItems[0].SubItems[2].Text;
+
+                lblStatus.Text = $"Selected: {selected} ({status}) | Press TERMINATE or START";
+                lblStatus.ForeColor = Color.Cyan;
+            }
+            else
+            {
+                lblStatus.Text = "No process selected | Click on a process to select it";
+                lblStatus.ForeColor = Color.Gray;
+            }
+        }
+
         private void StartAutoRefresh()
         {
             refreshTimer = new Timer();
-            refreshTimer.Interval = 1000;
+            refreshTimer.Interval = 2000;
             refreshTimer.Tick += (s, e) => RefreshProcessList();
             refreshTimer.Start();
         }
 
+        private void SyncFromStorage()
+        {
+            MemoryStorage.LoadMemory();
+            calculatorRunning = MemoryStorage.CalculatorRunning;
+            timeServiceRunning = MemoryStorage.TimeRunning;
+        }
+
         private void RefreshProcessList()
         {
+            SyncFromStorage();
+
+            string selectedPid = null;
+            if (listView.SelectedItems.Count > 0)
+            {
+                selectedPid = listView.SelectedItems[0].Text;
+            }
+
             listView.Items.Clear();
 
-            // Calculate used memory dynamically
-            int usedMem = kernelMem + shellMem + taskMem;
-            if (calculatorRunning) usedMem += calculatorMem;
-            if (timeServiceRunning) usedMem += timeMem;
+            int usedMem = MemoryStorage.GetUsedRAM();
+            int percentage = MemoryStorage.GetPercentage();
 
-            int freeMem = totalRAM - usedMem;
-            int percentage = (usedMem * 100) / totalRAM;
+            int runningCount = 2;
+            if (calculatorRunning) runningCount++;
+            if (timeServiceRunning) runningCount++;
 
-            // Update status label with real memory info
-            lblStatus.Text = $"🖥️ {(calculatorRunning ? 3 : 2)}/4 Running  |  💾 RAM: {usedMem}KB / {totalRAM}KB ({percentage}%)  |  📀 Free: {freeMem}KB";
+            lblStatus.Text = $"🖥️ {runningCount}/4 Running | RAM: {FormatKB(usedMem)} / {FormatKB(MemoryStorage.TotalRAM)} ({percentage}%)";
 
-            // KERNEL - Always RUNNING
-            AddProcessItem("001", "Kernel", kernelRunning ? "RUNNING" : "TERMINATED", $"{kernelMem} KB", kernelRunning);
+            AddProcessItem("001", "Kernel", "RUNNING", FormatKB(MemoryStorage.KernelMem), true);
+            AddProcessItem("002", "Shell", "RUNNING", FormatKB(MemoryStorage.ShellMem), true);
 
-            // SHELL - Always RUNNING
-            AddProcessItem("002", "Shell", shellRunning ? "RUNNING" : "TERMINATED", $"{shellMem} KB", shellRunning);
-
-            // CALCULATOR - Dynamic
             string calcStatus = calculatorRunning ? "RUNNING" : "TERMINATED";
-            string calcMem = calculatorRunning ? $"{calculatorMem} KB" : "0 KB";
-            AddProcessItem("003", "Calculator", calcStatus, calcMem, calculatorRunning);
+            string calcMemStr = calculatorRunning ? FormatKB(MemoryStorage.CalculatorMem) : "0 KB";
+            AddProcessItem("003", "Calculator", calcStatus, calcMemStr, calculatorRunning);
 
-            // TIME SERVICE - Dynamic
             string timeStatus = timeServiceRunning ? "RUNNING" : "TERMINATED";
-            string timeMemStr = timeServiceRunning ? $"{timeMem} KB" : "0 KB";
+            string timeMemStr = timeServiceRunning ? FormatKB(MemoryStorage.TimeMem) : "0 KB";
             AddProcessItem("004", "Time Service", timeStatus, timeMemStr, timeServiceRunning);
 
-            // Update MemoryForm if open
-            UpdateMemoryForm();
+            if (selectedPid != null)
+            {
+                foreach (ListViewItem item in listView.Items)
+                {
+                    if (item.Text == selectedPid)
+                    {
+                        item.Selected = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        private string FormatKB(int kb)
+        {
+            if (kb < 1024) return kb + " KB";
+            return (kb / 1024) + " MB";
         }
 
         private void AddProcessItem(string pid, string name, string status, string memory, bool isRunning)
@@ -172,16 +201,11 @@ namespace MiniOS_GUI
             item.SubItems.Add(icon + name);
             item.SubItems.Add(status);
             item.SubItems.Add(memory);
-
-            if (isRunning)
-                item.ForeColor = Color.Lime;
-            else
-                item.ForeColor = Color.Red;
-
+            item.ForeColor = isRunning ? Color.Lime : Color.Red;
             listView.Items.Add(item);
         }
 
-        private void UpdateMemoryForm()
+        private void UpdateMemoryForms()
         {
             foreach (Form form in Application.OpenForms)
             {
@@ -189,6 +213,7 @@ namespace MiniOS_GUI
                 {
                     memoryForm.SetCalculatorStatus(calculatorRunning);
                     memoryForm.SetTimeStatus(timeServiceRunning);
+                    memoryForm.RefreshMemory();
                 }
             }
         }
@@ -202,43 +227,48 @@ namespace MiniOS_GUI
         {
             if (listView.SelectedItems.Count == 0)
             {
-                MessageBox.Show("Please select a process first!", "Task Manager",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Please SELECT a process first!\n\nClick on any process to select it, then click TERMINATE.",
+                    "Task Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            string selected = listView.SelectedItems[0].SubItems[1].Text
-                .Replace("🟢 ", "").Replace("🔴 ", "");
+            string selected = listView.SelectedItems[0].SubItems[1].Text;
+            selected = selected.Replace("🟢 ", "").Replace("🔴 ", "");
             string status = listView.SelectedItems[0].SubItems[2].Text;
 
             if (status == "TERMINATED")
             {
-                MessageBox.Show($"{selected} is already terminated!", "Task Manager");
+                MessageBox.Show($"{selected} is already terminated!", "Task Manager",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
             if (selected == "Kernel" || selected == "Shell")
             {
-                MessageBox.Show($"Cannot terminate {selected} - Critical system process!", "Task Manager",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Cannot terminate {selected} - Critical system process!",
+                    "Task Manager", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
-            DialogResult result = MessageBox.Show($"Terminate {selected} process?", "Confirm",
-                MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            DialogResult result = MessageBox.Show($"Terminate {selected} process?\n\nThis will free up memory.",
+                "Confirm Termination", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
 
             if (result == DialogResult.Yes)
             {
                 if (selected == "Calculator")
                 {
-                    calculatorRunning = false;
-                    UpdateTerminalForm(false);
+                    MemoryStorage.StopCalculator();
+                    SystemLogForm.WriteLog("TASK", "admin", "Process Terminated", "Calculator", "SUCCESS");
                 }
                 else if (selected == "Time Service")
-                    timeServiceRunning = false;
+                {
+                    MemoryStorage.StopTimeService();
+                    SystemLogForm.WriteLog("TASK", "admin", "Process Terminated", "Time Service", "SUCCESS");
+                }
 
                 RefreshProcessList();
-                SystemLogForm.WriteLog("TASK", "admin", "Process Terminated", selected, "SUCCESS");
+                UpdateMemoryForms();
+                lblStatus.Text = $"✓ {selected} terminated at {DateTime.Now:HH:mm:ss}";
             }
         }
 
@@ -246,59 +276,50 @@ namespace MiniOS_GUI
         {
             if (listView.SelectedItems.Count == 0)
             {
-                MessageBox.Show("Please select a process first!", "Task Manager");
+                MessageBox.Show("Please SELECT a process first!\n\nClick on any process to select it, then click START.",
+                    "Task Manager", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            string selected = listView.SelectedItems[0].SubItems[1].Text
-                .Replace("🟢 ", "").Replace("🔴 ", "");
+            string selected = listView.SelectedItems[0].SubItems[1].Text;
+            selected = selected.Replace("🟢 ", "").Replace("🔴 ", "");
             string status = listView.SelectedItems[0].SubItems[2].Text;
 
             if (selected == "Kernel" || selected == "Shell")
             {
-                MessageBox.Show($"{selected} is always running!", "Task Manager");
+                MessageBox.Show($"{selected} is always running!", "Task Manager",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
             if (status == "RUNNING")
             {
-                MessageBox.Show($"{selected} is already running!", "Task Manager");
+                MessageBox.Show($"{selected} is already running!", "Task Manager",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
             if (selected == "Calculator")
             {
-                calculatorRunning = true;
-                UpdateTerminalForm(true);
+                MemoryStorage.StartCalculator();
+                SystemLogForm.WriteLog("TASK", "admin", "Process Started", "Calculator", "SUCCESS");
             }
             else if (selected == "Time Service")
             {
-                timeServiceRunning = true;
+                MemoryStorage.StartTimeService();
+                SystemLogForm.WriteLog("TASK", "admin", "Process Started", "Time Service", "SUCCESS");
             }
 
             RefreshProcessList();
-            SystemLogForm.WriteLog("TASK", "admin", "Process Started", selected, "SUCCESS");
+            UpdateMemoryForms();
+            lblStatus.Text = $"✓ {selected} started at {DateTime.Now:HH:mm:ss}";
         }
 
-        private void UpdateTerminalForm(bool isRunning)
-        {
-            foreach (Form form in Application.OpenForms)
-            {
-                if (form is TerminalForm terminal)
-                {
-                    if (isRunning)
-                        terminal.StartCalculator();
-                    else
-                        terminal.StopCalculator();
-                }
-            }
-        }
-
-        // Public methods for external control
-        public void StartCalculator() { calculatorRunning = true; RefreshProcessList(); }
-        public void StopCalculator() { calculatorRunning = false; RefreshProcessList(); }
-        public void StartTimeService() { timeServiceRunning = true; RefreshProcessList(); }
-        public void StopTimeService() { timeServiceRunning = false; RefreshProcessList(); }
-        public bool IsCalculatorRunning() { return calculatorRunning; }
+        public void StartCalculator() { MemoryStorage.StartCalculator(); RefreshProcessList(); UpdateMemoryForms(); }
+        public void StopCalculator() { MemoryStorage.StopCalculator(); RefreshProcessList(); UpdateMemoryForms(); }
+        public void StartTimeService() { MemoryStorage.StartTimeService(); RefreshProcessList(); UpdateMemoryForms(); }
+        public void StopTimeService() { MemoryStorage.StopTimeService(); RefreshProcessList(); UpdateMemoryForms(); }
+        public bool IsCalculatorRunning() { return MemoryStorage.CalculatorRunning; }
+        public bool IsTimeServiceRunning() { return MemoryStorage.TimeRunning; }
     }
 }

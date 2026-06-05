@@ -44,10 +44,6 @@ frac dd ?
 
 .code
 
-; ==========================
-; STRING → NUMBER (x100)
-; ==========================
-
 StrToInt PROC uses ebx ecx edx esi pStr:DWORD
 
     mov esi,pStr
@@ -135,10 +131,6 @@ DONE:
     ret
 
 StrToInt ENDP
-
-; ==========================
-; CALCULATOR
-; ==========================
 
 CalculatorSystem PROC PUBLIC
 
@@ -243,24 +235,13 @@ POSITIVE:
 
     mov frac,eax
 
-    invoke wsprintfA,\
-        ADDR buffer,\
-        ADDR resultFmt,\
-        whole,\
-        frac
+    invoke wsprintfA,ADDR buffer,ADDR resultFmt,whole,frac
 
-    invoke WriteConsoleA,\
-        ebx,\
-        ADDR buffer,\
-        100,\
-        0,\
-        0
+    invoke WriteConsoleA,ebx,ADDR buffer,100,0,0
 
 FINISH:
 
-    invoke lstrcpyA,\
-        ADDR calcStatus,\
-        ADDR terminatedTxt
+    invoke lstrcpyA,ADDR calcStatus,ADDR terminatedTxt
 
     ret
 

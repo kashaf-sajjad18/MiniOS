@@ -24,8 +24,6 @@ includelib user32.lib
 
 .data
 
-TESTMSG db 13,10,"*** NEW SHELL BUILD RUNNING ***",13,10,0
-
 prompt db 13,10,"MiniOS> ",0
 promptLen EQU ($-prompt)
 
@@ -67,14 +65,7 @@ ShellSystem PROC PUBLIC
     invoke GetStdHandle,STD_OUTPUT_HANDLE
     mov ebx,eax
 
-    invoke WriteConsoleA,ebx,ADDR TESTMSG,35,0,0
-
-    invoke WriteConsoleA,\
-        ebx,\
-        ADDR welcomeMsg,\
-        welcomeLen,\
-        0,\
-        0
+    invoke WriteConsoleA,ebx,ADDR welcomeMsg,welcomeLen,0,0
 
 START_LOOP:
 
@@ -84,19 +75,9 @@ START_LOOP:
     invoke GetStdHandle,STD_INPUT_HANDLE
     mov esi,eax
 
-    invoke WriteConsoleA,\
-        ebx,\
-        ADDR prompt,\
-        promptLen,\
-        0,\
-        0
+    invoke WriteConsoleA,ebx,ADDR prompt,promptLen,0,0
 
-    invoke ReadConsoleA,\
-        esi,\
-        ADDR cmdInput,\
-        50,\
-        ADDR bytesRead,\
-        0
+    invoke ReadConsoleA,esi,ADDR cmdInput,50,ADDR bytesRead,0
 
     mov eax,bytesRead
     cmp eax,2
@@ -129,24 +110,11 @@ START_LOOP:
     cmp eax,0
     je SHUTDOWN
 
-    invoke WriteConsoleA,\
-        ebx,\
-        ADDR invalidMsg,\
-        invalidLen,\
-        0,\
-        0
-
+    invoke WriteConsoleA,ebx,ADDR invalidMsg,invalidLen,0,0
     jmp START_LOOP
 
 SHOW_HELP:
-
-    invoke WriteConsoleA,\
-        ebx,\
-        ADDR welcomeMsg,\
-        welcomeLen,\
-        0,\
-        0
-
+    invoke WriteConsoleA,ebx,ADDR welcomeMsg,welcomeLen,0,0
     jmp START_LOOP
 
 SHOW_TIME:
@@ -166,14 +134,7 @@ SHOW_TASK:
     jmp START_LOOP
 
 SHUTDOWN:
-
-    invoke WriteConsoleA,\
-        ebx,\
-        ADDR shutdownMsg,\
-        shutdownLen,\
-        0,\
-        0
-
+    invoke WriteConsoleA,ebx,ADDR shutdownMsg,shutdownLen,0,0
     ret
 
 ShellSystem ENDP

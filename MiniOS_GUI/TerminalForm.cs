@@ -1,231 +1,321 @@
 ﻿using System;
+using System.Data;
 using System.Drawing;
-using System.Threading;
+using System.IO;
 using System.Windows.Forms;
 
 namespace MiniOS_GUI
 {
-    public class TerminalForm : Form
+    public partial class TerminalForm : Form
     {
         private RichTextBox terminalBox;
         private bool booted = false;
-        private bool calcMode = false;
-        private double calcNum1 = 0;
-        private string calcOp = "";
-        private bool calculatorRunning = false;
+        private bool commandRunning = false;
+        private string currentInput = "";
+        private bool calculatorMode = false;
+
+        // Boot timer
+        private string[] bootLines;
+        private int bootIndex = 0;
+        private System.Windows.Forms.Timer bootTimer;
 
         public TerminalForm()
         {
             BuildUI();
-            this.Shown += OnShown;
+            this.Load += (s, e) => StartBoot();
         }
 
+        // -------------------------------------------------------
+        // UI BUILD
+        // -------------------------------------------------------
         private void BuildUI()
         {
-            this.Text = "MiniOS Terminal";
-            this.Size = new Size(1000, 650);
-            this.MinimumSize = new Size(800, 500);
+            this.Text = "NOVA-OS Terminal";
+            this.Size = new Size(900, 600);
             this.BackColor = Color.Black;
             this.StartPosition = FormStartPosition.CenterScreen;
+            this.Font = new Font("Consolas", 11, FontStyle.Bold);
 
             terminalBox = new RichTextBox();
             terminalBox.BackColor = Color.Black;
             terminalBox.ForeColor = Color.Lime;
             terminalBox.Font = new Font("Consolas", 11, FontStyle.Bold);
             terminalBox.Dock = DockStyle.Fill;
-            terminalBox.WordWrap = false;
+            terminalBox.ReadOnly = false;
+            terminalBox.ScrollBars = RichTextBoxScrollBars.Vertical;
+            terminalBox.WordWrap = true;
             terminalBox.KeyDown += TerminalBox_KeyDown;
-
+            terminalBox.KeyPress += TerminalBox_KeyPress;
             Controls.Add(terminalBox);
         }
 
-        private void OnShown(object sender, EventArgs e)
+        // -------------------------------------------------------
+        // BOOT — Timer based, line by line, non-blocking
+        // -------------------------------------------------------
+        private void StartBoot()
         {
-            BootSystem();
-            terminalBox.Focus();
-        }
-
-        private void TerminalBox_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Enter)
-            {
-                e.SuppressKeyPress = true;
-                RunCommand();
-            }
-        }
-
-        private void RunCommand()
-        {
-            string fullText = terminalBox.Text;
-            int promptPos = fullText.LastIndexOf("MiniOS> ");
-
-            if (promptPos >= 0)
-            {
-                string command = fullText.Substring(promptPos + 8);
-                command = command.Trim();
-                terminalBox.AppendText("\n");
-                ProcessCommand(command);
-                if (!calcMode) terminalBox.AppendText("MiniOS> ");
-                terminalBox.ScrollToCaret();
-            }
-        }
-
-        private void BootSystem()
-        {
-            string[] bootMessages = {
+            bootLines = new string[] {
+                "",
                 "Initializing Kernel............. [OK]",
                 "Loading Memory Manager.......... [OK]",
                 "Starting Task Service........... [OK]",
                 "Mounting File System............ [OK]",
-                "Loading Shell................... [OK]"
+                "Loading Shell................... [OK]",
+                "",
+                "========== MINIOS READY ==========",
+                ""
             };
 
-            foreach (string msg in bootMessages)
+            bootTimer = new System.Windows.Forms.Timer();
+            bootTimer.Interval = 350;
+            bootTimer.Tick += BootTick;
+            bootTimer.Start();
+        }
+
+        private void BootTick(object sender, EventArgs e)
+        {
+            if (bootIndex < bootLines.Length)
             {
-                terminalBox.AppendText(msg + "\n");
+                terminalBox.AppendText(bootLines[bootIndex] + "\n");
                 terminalBox.ScrollToCaret();
-                Thread.Sleep(400);
-                Application.DoEvents();
-            }
-
-            Thread.Sleep(300);
-            terminalBox.AppendText("\n========== MINIOS READY ==========\n\n");
-            Thread.Sleep(200);
-
-            ShowWelcome();
-            booted = true;
-            terminalBox.AppendText("MiniOS> ");
-            terminalBox.ScrollToCaret();
-        }
-
-        private void ShowWelcome()
-        {
-            terminalBox.AppendText("========= MINIOS TERMINAL =========\n");
-            terminalBox.AppendText("Available Commands:\n");
-            terminalBox.AppendText("help - show commands\n");
-            terminalBox.AppendText("time - show time\n");
-            terminalBox.AppendText("calc - calculator\n");
-            terminalBox.AppendText("mem  - memory status\n");
-            terminalBox.AppendText("task - task manager\n");
-            terminalBox.AppendText("shutdown - exit\n\n");
-        }
-
-        private void ProcessCommand(string input)
-        {
-            if (!booted) return;
-            if (calcMode)
-            {
-                HandleCalc(input);
-                return;
-            }
-            if (string.IsNullOrEmpty(input)) return;
-
-            string cmd = input.ToLower();
-            switch (cmd)
-            {
-                case "help": ShowWelcome(); break;
-                case "time": terminalBox.AppendText(DateTime.Now.ToString("HH:mm:ss") + "\n"); break;
-                case "calc": EnterCalcMode(); break;
-                case "mem": ShowMem(); break;
-                case "task": OpenTaskManager(); break;
-                case "shutdown": terminalBox.AppendText("System Shutting Down...\n"); Thread.Sleep(800); this.Close(); break;
-                default: terminalBox.AppendText("Unknown Command!\n"); break;
-            }
-        }
-
-        private void OpenTaskManager()
-        {
-            foreach (Form form in Application.OpenForms)
-                if (form is TaskManagerForm) { form.BringToFront(); terminalBox.AppendText("\n[Task Manager already open]\n"); return; }
-            new TaskManagerForm().Show();
-            terminalBox.AppendText("\n[Task Manager opened]\n");
-        }
-
-        private void ShowMem()
-        {
-            foreach (Form form in Application.OpenForms)
-                if (form is MemoryForm) { form.BringToFront(); terminalBox.AppendText("\n[Memory Manager already open]\n"); return; }
-            new MemoryForm().Show();
-            terminalBox.AppendText("\n[Memory Manager opened]\n");
-        }
-
-        private void EnterCalcMode()
-        {
-            calcMode = true;
-            calcNum1 = 0;
-            calcOp = "";
-            terminalBox.AppendText("\n=== CALCULATOR MODE ===\n");
-            terminalBox.AppendText("First Number: ");
-            terminalBox.ScrollToCaret();
-        }
-
-        private void HandleCalc(string input)
-        {
-            input = input.Trim();
-
-            if (calcNum1 == 0 && string.IsNullOrEmpty(calcOp))
-            {
-                if (double.TryParse(input, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double num1))
-                {
-                    calcNum1 = num1;
-                    terminalBox.AppendText("Operator (+ - * /): ");
-                }
-                else
-                {
-                    terminalBox.AppendText("Invalid number! Use digits (e.g., 10, 3.5)\n");
-                    terminalBox.AppendText("First Number: ");
-                }
-            }
-            else if (string.IsNullOrEmpty(calcOp))
-            {
-                if (input == "+" || input == "-" || input == "*" || input == "/")
-                {
-                    calcOp = input;
-                    terminalBox.AppendText("Second Number: ");
-                }
-                else
-                {
-                    terminalBox.AppendText("Invalid operator! Use + - * /\n");
-                    terminalBox.AppendText("Operator (+ - * /): ");
-                }
+                bootIndex++;
             }
             else
             {
-                if (double.TryParse(input, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double num2))
-                {
-                    double result = 0;
-                    bool error = false;
-                    switch (calcOp)
-                    {
-                        case "+": result = calcNum1 + num2; break;
-                        case "-": result = calcNum1 - num2; break;
-                        case "*": result = calcNum1 * num2; break;
-                        case "/":
-                            if (num2 == 0) { terminalBox.AppendText("Error: Division by zero!\n"); error = true; }
-                            else result = calcNum1 / num2;
-                            break;
-                    }
-                    if (!error) terminalBox.AppendText($"\nResult = {Math.Round(result, 2):F2}\n");
-                    if (!calculatorRunning) { calculatorRunning = true; UpdateMemoryForm(); }
-                }
-                else terminalBox.AppendText("Invalid number! Use digits (e.g., 10, 3.5)\n");
+                bootTimer.Stop();
+                bootTimer.Dispose();
 
-                calcMode = false;
-                calcNum1 = 0;
-                calcOp = "";
-                terminalBox.AppendText("\nMiniOS> ");
+                // ── Only show "Type help" note after boot, NOT the full menu ──
+                terminalBox.AppendText("  Type 'help' for available commands.\n\n");
+
+                booted = true;
+                Prompt();
+                terminalBox.Focus();
             }
+        }
+
+        // -------------------------------------------------------
+        // KEY HANDLING
+        // -------------------------------------------------------
+        private void TerminalBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (!booted || commandRunning)
+            {
+                if (e.KeyCode != Keys.Up && e.KeyCode != Keys.Down &&
+                    e.KeyCode != Keys.Left && e.KeyCode != Keys.Right)
+                    e.SuppressKeyPress = true;
+                return;
+            }
+
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.SuppressKeyPress = true;
+                if (calculatorMode)
+                    RunCalculatorExpression();
+                else
+                    RunCommand();
+            }
+            else if (e.KeyCode == Keys.Back)
+            {
+                e.SuppressKeyPress = true;
+                if (currentInput.Length > 0)
+                {
+                    currentInput = currentInput.Substring(0, currentInput.Length - 1);
+                    RedrawPrompt();
+                }
+            }
+        }
+
+        private void TerminalBox_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (!booted || commandRunning) { e.Handled = true; return; }
+
+            if (e.KeyChar >= 32 && e.KeyChar != 127)
+            {
+                currentInput += e.KeyChar;
+                RedrawPrompt();
+            }
+            e.Handled = true;
+        }
+
+        private void RedrawPrompt()
+        {
+            string text = terminalBox.Text;
+            int last = text.LastIndexOf('\n');
+            if (last < 0) last = 0;
+            string before = text.Substring(0, last + 1);
+            terminalBox.Text = before + GetPromptText() + currentInput;
+            terminalBox.SelectionStart = terminalBox.Text.Length;
             terminalBox.ScrollToCaret();
         }
 
-        private void UpdateMemoryForm()
+        // -------------------------------------------------------
+        // COMMAND RUNNER
+        // -------------------------------------------------------
+        private void RunCommand()
         {
-            foreach (Form form in Application.OpenForms)
-                if (form is MemoryForm m) m.SetCalculatorStatus(calculatorRunning);
-                else if (form is TaskManagerForm t) { if (calculatorRunning) t.StartCalculator(); else t.StopCalculator(); }
+            string command = currentInput.Trim();
+            currentInput = "";
+            terminalBox.AppendText("\n");
+
+            if (string.IsNullOrEmpty(command))
+            {
+                Prompt();
+                return;
+            }
+
+            switch (command.ToLower())
+            {
+                // ── help: show full menu ──
+                case "help":
+                    ShowHelpMenu();
+                    Prompt();
+                    break;
+
+                case "clear":
+                    terminalBox.Clear();
+                    Prompt();
+                    break;
+
+                case "note":
+                    new BuiltInNotepad(null, true).Show();
+                    terminalBox.AppendText("[Notepad opened]\n");
+                    Prompt();
+                    break;
+
+                case "shutdown":
+                    terminalBox.AppendText("Shutting down NOVA-OS...\n");
+                    var shutTimer = new System.Windows.Forms.Timer();
+                    shutTimer.Interval = 700;
+                    shutTimer.Tick += (s, e) => { shutTimer.Stop(); this.Close(); };
+                    shutTimer.Start();
+                    break;
+
+                // ── time: show time from backend ──
+                case "time":
+                    string timeOut = MiniOSBackend.RunToString("time");
+                    if (!string.IsNullOrEmpty(timeOut))
+                        terminalBox.AppendText(timeOut + "\n");
+                    else
+                        terminalBox.AppendText("Current Time: " + DateTime.Now.ToString("HH:mm:ss") + "\n");
+                    Prompt();
+                    break;
+
+                // ── mem: ONLY open MemoryForm window, no terminal text, no kernel ──
+                case "mem":
+                    OpenFormOnce<MemoryForm>();
+                    Prompt();
+                    break;
+
+                // ── task: ONLY open TaskManagerForm window, no terminal text ──
+                case "task":
+                    OpenFormOnce<TaskManagerForm>();
+                    Prompt();
+                    break;
+
+                // ── calc: expression evaluator inline ──
+                case "calc":
+                    calculatorMode = true;
+                    terminalBox.AppendText("Enter expression (e.g. 10+5 or 20/4) then press Enter:\n");
+                    terminalBox.AppendText(GetPromptText());
+                    terminalBox.ScrollToCaret();
+                    commandRunning = false;
+                    return;
+
+                case "shell":
+                    terminalBox.AppendText("Shell is already running inside this terminal.\n");
+                    Prompt();
+                    break;
+
+                default:
+                    terminalBox.AppendText($"  Unknown command: '{command}'\n");
+                    terminalBox.AppendText("  Type 'help' for available commands.\n");
+                    Prompt();
+                    break;
+            }
         }
 
-        public void StartCalculator() { calculatorRunning = true; UpdateMemoryForm(); }
-        public void StopCalculator() { calculatorRunning = false; UpdateMemoryForm(); }
+        // -------------------------------------------------------
+        // HELPERS
+        // -------------------------------------------------------
+        private void Prompt()
+        {
+            terminalBox.AppendText(GetPromptText());
+            terminalBox.ScrollToCaret();
+        }
+
+        private string GetPromptText()
+        {
+            return calculatorMode ? "CALC> " : "NOVA-OS> ";
+        }
+
+        // Open a form only once — if already open bring it to front
+        private void OpenFormOnce<T>() where T : Form, new()
+        {
+            foreach (Form f in Application.OpenForms)
+            {
+                if (f is T)
+                {
+                    f.BringToFront();
+                    return;
+                }
+            }
+            new T().Show();
+        }
+
+        private void RunCalculatorExpression()
+        {
+            string expression = currentInput.Trim();
+            currentInput = "";
+            terminalBox.AppendText("\n");
+
+            if (string.IsNullOrEmpty(expression))
+            {
+                calculatorMode = false;
+                Prompt();
+                return;
+            }
+
+            // Try backend first, fallback to DataTable
+            string backendResult = MiniOSBackend.RunToString("calc " + expression);
+            if (!string.IsNullOrEmpty(backendResult))
+            {
+                terminalBox.AppendText("Result: " + backendResult + "\n");
+            }
+            else
+            {
+                try
+                {
+                    DataTable table = new DataTable();
+                    object result = table.Compute(expression, string.Empty);
+                    terminalBox.AppendText($"Result: {result}\n");
+                }
+                catch (Exception ex)
+                {
+                    terminalBox.AppendText($"Error: {ex.Message}\n");
+                }
+            }
+
+            calculatorMode = false;
+            Prompt();
+        }
+
+        private void ShowHelpMenu()
+        {
+            terminalBox.AppendText("\n");
+            terminalBox.AppendText("+--------------------------------------------------------------+\n");
+            terminalBox.AppendText("|                    AVAILABLE COMMANDS                       |\n");
+            terminalBox.AppendText("+--------------------------------------------------------------+\n");
+            terminalBox.AppendText("|  help      Show this menu                                   |\n");
+            terminalBox.AppendText("|  time      Show current time  (Assembly backend)            |\n");
+            terminalBox.AppendText("|  calc      Calculator / expression evaluator                |\n");
+            terminalBox.AppendText("|  mem       Open Memory Manager window                       |\n");
+            terminalBox.AppendText("|  task      Open Task Manager window                         |\n");
+            terminalBox.AppendText("|  note      Built-in notepad                                 |\n");
+            terminalBox.AppendText("|  clear     Clear terminal screen                            |\n");
+            terminalBox.AppendText("|  shutdown  Shut down NOVA-OS                                |\n");
+            terminalBox.AppendText("+--------------------------------------------------------------+\n");
+            terminalBox.AppendText("\n");
+        }
     }
 }

@@ -9,7 +9,7 @@ namespace MiniOS_GUI
         private static string memoryFile = Application.StartupPath + "\\MiniOS_Memory.dat";
 
         // Base Memory values
-        public static int TotalRAM = 4096;  // 4GB equivalent in KB
+        public static int TotalRAM = 4096;  // 4MB in KB
         public static int KernelMem = 256;
         public static int ShellMem = 128;
         public static int TaskMem = 64;
@@ -33,7 +33,6 @@ namespace MiniOS_GUI
 
         static MemoryStorage()
         {
-            // Create folders if not exist
             if (!Directory.Exists(DocumentsPath))
                 Directory.CreateDirectory(DocumentsPath);
             if (!Directory.Exists(DownloadsPath))
@@ -59,7 +58,6 @@ namespace MiniOS_GUI
             long size = 0;
             try
             {
-                // Get all files
                 foreach (string file in Directory.GetFiles(folderPath, "*", SearchOption.AllDirectories))
                 {
                     FileInfo info = new FileInfo(file);
@@ -100,9 +98,9 @@ namespace MiniOS_GUI
             if (CalculatorRunning) used += CalculatorMem;
             if (TimeRunning) used += TimeMem;
 
-            // Add file storage usage (treat as disk cache)
+            // Add file storage to RAM directly
             int fileStorageKB = GetFileStorageInKB();
-            used += Math.Min(fileStorageKB, 512); // Max 512KB for file cache
+            used += fileStorageKB;
 
             return Math.Min(used, TotalRAM);
         }
@@ -123,7 +121,7 @@ namespace MiniOS_GUI
             {
                 using (StreamWriter sw = new StreamWriter(memoryFile))
                 {
-                    sw.WriteLine($"# MiniOS Memory Storage");
+                    sw.WriteLine($"# NOVA-OS Memory Storage");
                     sw.WriteLine($"# Last Updated: {DateTime.Now}");
                     sw.WriteLine($"TOTAL_RAM={TotalRAM}");
                     sw.WriteLine($"KERNEL={KernelMem}");

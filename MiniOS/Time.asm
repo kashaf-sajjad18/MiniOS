@@ -39,21 +39,12 @@ TimeSystem PROC PUBLIC
     invoke GetStdHandle,STD_OUTPUT_HANDLE
     mov ebx,eax
 
-    ; GET CURRENT SYSTEM TIME
     invoke GetLocalTime,ADDR sysTime
 
-    ; FORMAT STRING
-    invoke wsprintfA,\
-        ADDR buffer,\
-        ADDR fmt,\
-        sysTime.wHour,\
-        sysTime.wMinute,\
-        sysTime.wSecond
+    invoke wsprintfA,ADDR buffer,ADDR fmt,sysTime.wHour,sysTime.wMinute,sysTime.wSecond
 
-    ; PRINT TITLE
     invoke WriteConsoleA,ebx,ADDR timeTitle,titleLen,0,0
 
-    ; PRINT TIME
     invoke WriteConsoleA,ebx,ADDR buffer,100,0,0
 
     ret

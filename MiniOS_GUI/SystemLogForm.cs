@@ -20,6 +20,11 @@ namespace MiniOS_GUI
 
         public SystemLogForm()
         {
+            // Default window size - PEHLE SET KARO
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.Size = new Size(1100, 650);
+            this.MinimumSize = new Size(900, 500);
+
             BuildUI();
             LoadLogs();
             StartAutoRefresh();

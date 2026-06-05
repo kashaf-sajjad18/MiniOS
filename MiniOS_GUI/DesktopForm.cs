@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
 
 namespace MiniOS_GUI
@@ -11,53 +12,31 @@ namespace MiniOS_GUI
         private Label lblClock;
         private FlowLayoutPanel buttonPanel;
         private Panel scrollPanel;
-        private Label welcome;
+        private bool buttonsCreated = false;
 
         public DesktopForm()
         {
-            // Initialize form properties
-            this.Text = "MiniOS Desktop";
+            this.Text = "NOVA-OS Desktop";
             this.WindowState = FormWindowState.Maximized;
             this.BackColor = Color.FromArgb(16, 24, 32);
             this.FormBorderStyle = FormBorderStyle.Sizable;
             this.KeyPreview = true;
 
-            // Build all UI components
             BuildLeftDock();
             BuildTaskbar();
             BuildDesktopArea();
 
-            // Events
             this.KeyDown += DesktopForm_KeyDown;
-            this.Shown += DesktopForm_Shown;
             this.Resize += DesktopForm_Resize;
 
-            // Log
-            SystemLogForm.WriteLog("SYSTEM", "Desktop", "MiniOS Started", "Desktop environment loaded", "SUCCESS");
-        }
-
-        private void DesktopForm_Shown(object sender, EventArgs e)
-        {
-            CenterWelcomeMessage();
+            SystemLogForm.WriteLog("SYSTEM", "Desktop", "NOVA-OS Started", "Desktop environment loaded", "SUCCESS");
         }
 
         private void DesktopForm_Resize(object sender, EventArgs e)
         {
-            CenterWelcomeMessage();
             UpdateClockPosition();
             if (scrollPanel != null)
                 scrollPanel.Height = leftDock.Height - 80;
-        }
-
-        private void CenterWelcomeMessage()
-        {
-            if (welcome != null && desktopArea != null)
-            {
-                welcome.Location = new Point(
-                    Math.Max(0, (desktopArea.Width - welcome.Width) / 2),
-                    Math.Max(0, (desktopArea.Height - welcome.Height) / 2)
-                );
-            }
         }
 
         private void BuildLeftDock()
@@ -68,16 +47,15 @@ namespace MiniOS_GUI
             leftDock.BackColor = Color.FromArgb(24, 30, 38);
             Controls.Add(leftDock);
 
-            // Logo
+            // MAIN MENU Label
             Label logo = new Label();
-            logo.Text = "MINIOS";
-            logo.Font = new Font("Segoe UI", 22, FontStyle.Bold);
+            logo.Text = "MAIN MENU";
+            logo.Font = new Font("Segoe UI", 18, FontStyle.Bold);
             logo.ForeColor = Color.DeepSkyBlue;
             logo.Location = new Point(25, 20);
             logo.AutoSize = true;
             leftDock.Controls.Add(logo);
 
-            // Scrollable panel for buttons
             scrollPanel = new Panel();
             scrollPanel.Location = new Point(0, 80);
             scrollPanel.Size = new Size(260, leftDock.Height - 80);
@@ -94,23 +72,32 @@ namespace MiniOS_GUI
             buttonPanel.BackColor = Color.FromArgb(24, 30, 38);
             scrollPanel.Controls.Add(buttonPanel);
 
-            // CREATE BUTTONS ONLY ONCE
-            AddNavButton(">_ TERMINAL", "🖥️", BtnTerminal_Click);
-            AddNavButton("🌐 BROWSER", "🌐", BtnBrowser_Click);
-            AddNavButton("📁 FILES", "📁", BtnFiles_Click);
-            AddNavButton("📊 MEMORY", "📊", BtnMemory_Click);
-            AddNavButton("📋 TASKS", "📋", BtnTasks_Click);
-            AddNavButton("⚠ PANIC", "⚠️", BtnPanic_Click);
-            AddNavButton("🔒 PRIVATE", "🔒", BtnPrivate_Click);
-            AddNavButton("📋 SYSTEM LOG", "📜", BtnLogs_Click);
+            if (!buttonsCreated)
+            {
+                CreateButtons();
+                buttonsCreated = true;
+            }
+        }
+        private void CreateButtons()
+        {
+            buttonPanel.Controls.Clear();
+
+            AddButton("🖥️", "TERMINAL", BtnTerminal_Click);
+            AddButton("🌐", "BROWSER", BtnBrowser_Click);
+            AddButton("📁", "FILES", BtnFiles_Click);
+            AddButton("🖼️", "IMAGES", BtnImages_Click);
+            AddButton("📊", "MEMORY", BtnMemory_Click);
+            AddButton("📋", "TASKS", BtnTasks_Click);
+            AddButton("⚠️", "KERNEL PANIC", BtnKernelPanic_Click);
+            AddButton("📜", "SYSTEM LOG", BtnLogs_Click);
         }
 
-        private void AddNavButton(string text, string icon, EventHandler clickHandler)
+        private void AddButton(string icon, string text, EventHandler clickHandler)
         {
             Button btn = new Button();
             btn.Text = $"  {icon}  {text}";
-            btn.Size = new Size(220, 50);
-            btn.Margin = new Padding(5, 5, 5, 5);
+            btn.Size = new Size(220, 48);
+            btn.Margin = new Padding(5, 3, 5, 3);
             btn.TextAlign = ContentAlignment.MiddleLeft;
             btn.Font = new Font("Segoe UI", 10, FontStyle.Bold);
             btn.BackColor = Color.FromArgb(35, 42, 52);
@@ -135,21 +122,20 @@ namespace MiniOS_GUI
             Controls.Add(taskbar);
 
             Button startBtn = new Button();
-            startBtn.Text = " MINIOS";
+            startBtn.Text = " NOVA-OS";
             startBtn.Font = new Font("Segoe UI", 10, FontStyle.Bold);
             startBtn.Size = new Size(100, 35);
             startBtn.Location = new Point(10, 5);
             startBtn.BackColor = Color.DeepSkyBlue;
             startBtn.ForeColor = Color.White;
             startBtn.FlatStyle = FlatStyle.Flat;
-            startBtn.Click += (s, e) => MessageBox.Show("MiniOS System\nVersion 2.0\n\n© 2024", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            startBtn.Click += (s, e) => MessageBox.Show("NOVA-OS System\nVersion 2.0\n\n© 2024", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
             taskbar.Controls.Add(startBtn);
 
             lblClock = new Label();
             lblClock.ForeColor = Color.White;
             lblClock.Font = new Font("Segoe UI", 11, FontStyle.Bold);
             lblClock.AutoSize = true;
-            lblClock.TextAlign = ContentAlignment.MiddleRight;
             taskbar.Controls.Add(lblClock);
 
             clockTimer = new Timer();
@@ -177,15 +163,47 @@ namespace MiniOS_GUI
             desktopArea.BackColor = Color.FromArgb(16, 24, 32);
             Controls.Add(desktopArea);
 
-            welcome = new Label();
-            welcome.Text = "WELCOME TO MINIOS";
-            welcome.ForeColor = Color.DeepSkyBlue;
-            welcome.Font = new Font("Segoe UI", 36, FontStyle.Bold);
-            welcome.BackColor = Color.Transparent;
-            welcome.AutoSize = true;
-            desktopArea.Controls.Add(welcome);
-        }
+            // Welcome Panel on TOP - SAME COLOR AS LEFT PANEL
+            Panel welcomePanel = new Panel();
+            welcomePanel.Dock = DockStyle.Top;
+            welcomePanel.Height = 80;
+            welcomePanel.BackColor = Color.FromArgb(24, 30, 38);  // ← SAME as leftDock color
 
+            Label welcomeLabel = new Label();
+            welcomeLabel.Text = "WELCOME TO NOVA-OS";
+            welcomeLabel.ForeColor = Color.DeepSkyBlue;
+            welcomeLabel.Font = new Font("Segoe UI", 24, FontStyle.Bold);
+            welcomeLabel.TextAlign = ContentAlignment.MiddleCenter;
+            welcomeLabel.Dock = DockStyle.Fill;
+            welcomePanel.Controls.Add(welcomeLabel);
+
+            desktopArea.Controls.Add(welcomePanel);
+
+            // Kali Image - FULL BACKGROUND (Like Wallpaper)
+            try
+            {
+                string imagePath = Path.Combine(Application.StartupPath, "dragon.png");
+
+                if (!File.Exists(imagePath))
+                    imagePath = Path.Combine(Application.StartupPath, "Resources", "dragon.png");
+                if (!File.Exists(imagePath))
+                    imagePath = @"D:\coal lab\MiniOS\MiniOS_GUI\bin\Debug\kali pic.png";
+                if (!File.Exists(imagePath))
+                    imagePath = @"D:\coal lab\MiniOS_GUI\bin\Debug\kali pic.png";
+
+                if (File.Exists(imagePath))
+                {
+                    PictureBox wallpaper = new PictureBox();
+                    wallpaper.Image = Image.FromFile(imagePath);
+                    wallpaper.SizeMode = PictureBoxSizeMode.StretchImage;
+                    wallpaper.Dock = DockStyle.Fill;
+                    wallpaper.BackColor = Color.Transparent;
+                    desktopArea.Controls.Add(wallpaper);
+                    wallpaper.SendToBack();
+                }
+            }
+            catch { }
+        }
         private void DesktopForm_KeyDown(object sender, KeyEventArgs e)
         {
             if (scrollPanel != null)
@@ -194,10 +212,6 @@ namespace MiniOS_GUI
                     scrollPanel.AutoScrollPosition = new Point(0, -scrollPanel.AutoScrollPosition.Y - 30);
                 else if (e.Control && e.KeyCode == Keys.Down)
                     scrollPanel.AutoScrollPosition = new Point(0, -scrollPanel.AutoScrollPosition.Y + 30);
-                else if (e.KeyCode == Keys.PageUp)
-                    scrollPanel.AutoScrollPosition = new Point(0, -scrollPanel.AutoScrollPosition.Y - 200);
-                else if (e.KeyCode == Keys.PageDown)
-                    scrollPanel.AutoScrollPosition = new Point(0, -scrollPanel.AutoScrollPosition.Y + 200);
             }
         }
 
@@ -205,112 +219,44 @@ namespace MiniOS_GUI
 
         private void BtnTerminal_Click(object sender, EventArgs e)
         {
-            TerminalForm t = new TerminalForm();
-            t.Show();
-            SystemLogForm.WriteLog("APP", "Desktop", "Terminal Opened", "User launched terminal", "SUCCESS");
+            new TerminalForm().Show();
         }
 
         private void BtnBrowser_Click(object sender, EventArgs e)
         {
-            try
-            {
-                System.Diagnostics.Process.Start("chrome.exe");
-                SystemLogForm.WriteLog("APP", "Desktop", "Browser Opened", "Chrome launched", "SUCCESS");
-            }
-            catch
-            {
-                System.Diagnostics.Process.Start("msedge.exe");
-                SystemLogForm.WriteLog("APP", "Desktop", "Browser Opened", "Edge launched", "SUCCESS");
-            }
+            try { System.Diagnostics.Process.Start("chrome.exe"); }
+            catch { System.Diagnostics.Process.Start("msedge.exe"); }
         }
 
         private void BtnFiles_Click(object sender, EventArgs e)
         {
-            ExplorerForm exp = new ExplorerForm();
-            exp.Show();
-            SystemLogForm.WriteLog("APP", "Desktop", "File Explorer Opened", "User accessed files", "SUCCESS");
+            new ExplorerForm().Show();
+        }
+
+        private void BtnImages_Click(object sender, EventArgs e)
+        {
+            string imagesPath = Path.Combine(Application.StartupPath, "MiniOS_Pictures");
+            if (!Directory.Exists(imagesPath))
+                Directory.CreateDirectory(imagesPath);
+            ImageViewerForm viewer = new ImageViewerForm(imagesPath);
+            viewer.Show();
+            SystemLogForm.WriteLog("APP", "Desktop", "Image Viewer Opened", "User opened gallery", "SUCCESS");
         }
 
         private void BtnMemory_Click(object sender, EventArgs e)
         {
-            MemoryForm m = new MemoryForm();
-            m.Show();
-            SystemLogForm.WriteLog("APP", "Desktop", "Memory Manager Opened", "User checked memory", "SUCCESS");
+            new MemoryForm().Show();
         }
 
         private void BtnTasks_Click(object sender, EventArgs e)
         {
-            TaskManagerForm t = new TaskManagerForm();
-            t.Show();
-            SystemLogForm.WriteLog("APP", "Desktop", "Task Manager Opened", "User viewed processes", "SUCCESS");
+            new TaskManagerForm().Show();
         }
 
-        private void BtnPanic_Click(object sender, EventArgs e)
+        private void BtnKernelPanic_Click(object sender, EventArgs e)
         {
-            DialogResult result = MessageBox.Show("Kernel Panic will restart MiniOS Desktop!\n\nContinue?", "⚠ KERNEL PANIC", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-            if (result == DialogResult.Yes)
-            {
-                SystemLogForm.WriteLog("SYSTEM", "Desktop", "Kernel Panic", "System restart", "WARNING");
-                Application.Restart();
-            }
-        }
-
-        private void BtnPrivate_Click(object sender, EventArgs e)
-        {
-            Form passForm = new Form();
-            passForm.Text = "Private Access";
-            passForm.Size = new Size(350, 160);
-            passForm.BackColor = Color.FromArgb(16, 24, 32);
-            passForm.StartPosition = FormStartPosition.CenterParent;
-            passForm.FormBorderStyle = FormBorderStyle.FixedDialog;
-
-            Label lbl = new Label();
-            lbl.Text = "Enter Private Password:";
-            lbl.ForeColor = Color.White;
-            lbl.Location = new Point(25, 25);
-            lbl.AutoSize = true;
-
-            TextBox txtPass = new TextBox();
-            txtPass.Location = new Point(25, 55);
-            txtPass.Size = new Size(280, 25);
-            txtPass.PasswordChar = '*';
-
-            Button btnOk = new Button();
-            btnOk.Text = "ACCESS";
-            btnOk.Location = new Point(25, 95);
-            btnOk.Size = new Size(130, 35);
-            btnOk.BackColor = Color.FromArgb(35, 42, 52);
-            btnOk.ForeColor = Color.White;
-            btnOk.FlatStyle = FlatStyle.Flat;
-            btnOk.Click += (s, ev) => {
-                if (txtPass.Text == "admin123")
-                {
-                    SystemLogForm.WriteLog("PRIVATE", "admin", "Private Area Accessed", "Access granted", "SUCCESS");
-                    MessageBox.Show("Welcome to Private Area!", "Access Granted", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    passForm.Close();
-                }
-                else
-                {
-                    SystemLogForm.WriteLog("PRIVATE", "Unknown", "Private Access Denied", "Failed attempt", "FAILED");
-                    MessageBox.Show("Access Denied! Invalid Password.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    txtPass.Clear();
-                }
-            };
-
-            Button btnCancel = new Button();
-            btnCancel.Text = "CANCEL";
-            btnCancel.Location = new Point(175, 95);
-            btnCancel.Size = new Size(130, 35);
-            btnCancel.BackColor = Color.FromArgb(35, 42, 52);
-            btnCancel.ForeColor = Color.White;
-            btnCancel.FlatStyle = FlatStyle.Flat;
-            btnCancel.Click += (s, ev) => passForm.Close();
-
-            passForm.Controls.Add(lbl);
-            passForm.Controls.Add(txtPass);
-            passForm.Controls.Add(btnOk);
-            passForm.Controls.Add(btnCancel);
-            passForm.ShowDialog();
+            KernelPanicForm panicForm = new KernelPanicForm();
+            panicForm.Show();
         }
 
         private void BtnLogs_Click(object sender, EventArgs e)

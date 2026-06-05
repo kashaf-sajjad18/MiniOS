@@ -51,39 +51,17 @@ TaskSystem PROC PUBLIC
 
     invoke WriteConsoleA,ebx,ADDR shellFmt,shellLen,0,0
 
-    ; CALCULATOR
-
-    invoke wsprintfA,\
-        ADDR buffer,\
-        ADDR calcFmt,\
-        ADDR calcStatus,\
-        calcMem
+    invoke wsprintfA,ADDR buffer,ADDR calcFmt,ADDR calcStatus,calcMem
 
     invoke lstrlenA,ADDR buffer
 
-    invoke WriteConsoleA,\
-        ebx,\
-        ADDR buffer,\
-        eax,\
-        0,\
-        0
+    invoke WriteConsoleA,ebx,ADDR buffer,eax,0,0
 
-    ; TIME
-
-    invoke wsprintfA,\
-        ADDR buffer,\
-        ADDR timeFmt,\
-        ADDR timeStatus,\
-        timeMem
+    invoke wsprintfA,ADDR buffer,ADDR timeFmt,ADDR timeStatus,timeMem
 
     invoke lstrlenA,ADDR buffer
 
-    invoke WriteConsoleA,\
-        ebx,\
-        ADDR buffer,\
-        eax,\
-        0,\
-        0
+    invoke WriteConsoleA,ebx,ADDR buffer,eax,0,0
 
     ret
 

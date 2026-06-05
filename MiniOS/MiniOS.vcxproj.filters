@@ -18,16 +18,7 @@
     <MASM Include="main.asm">
       <Filter>Source Files</Filter>
     </MASM>
-    <MASM Include="Boot.asm">
-      <Filter>Source Files</Filter>
-    </MASM>
     <MASM Include="login.asm">
-      <Filter>Source Files</Filter>
-    </MASM>
-    <MASM Include="Shell.asm">
-      <Filter>Source Files</Filter>
-    </MASM>
-    <MASM Include="Calculator.asm">
       <Filter>Source Files</Filter>
     </MASM>
     <MASM Include="Time.asm">
@@ -40,6 +31,18 @@
       <Filter>Source Files</Filter>
     </MASM>
     <MASM Include="systemstate.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="Boot.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="Shell.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="Calculator.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
+    <MASM Include="FileExplorer.asm">
       <Filter>Source Files</Filter>
     </MASM>
   </ItemGroup>
